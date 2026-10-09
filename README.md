@@ -1,6 +1,10 @@
 # wstrace
 
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Project-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/gilnet)
+
 Modern strace and real-time Process Monitor for Windows.
+
 
 Built in native Rust with zero kernel drivers required, `wstrace` provides a 60 FPS terminal user interface (TUI) and an unbuffered stdout stream mode for system diagnostics.
 
@@ -180,4 +184,15 @@ wstrace --copy run <executable_path>
 
 - **Software License:** Licensed under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-or-later).
 - **Contributor License Agreement (CLA):** All external contributions are subject to the terms outlined in [CONTRIBUTING.md](CONTRIBUTING.md), ensuring unified copyright ownership and protecting corporate acquisition (M&A) and commercial dual-licensing rights.
+
+---
+
+## Support & Sponsorship
+
+If you find `wstrace` useful for your Windows engineering, security audits, or performance debugging, you can support development via Ko-fi:
+
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20the%20Author-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white)](https://ko-fi.com/gilnet)
+
+Direct link: [https://ko-fi.com/gilnet](https://ko-fi.com/gilnet)
+
 

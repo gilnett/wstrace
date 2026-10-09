@@ -8,7 +8,7 @@ use clap::{Parser, Subcommand, ValueEnum};
     author = "gilnett",
     version = "0.1.0",
     about = "Modern strace & real-time Process Monitor for Windows",
-    long_about = "wstrace traces Win32 API calls, file system I/O, registry, network sockets, and loaded modules with a 60 FPS TUI or stdout streaming mode."
+    long_about = "wstrace traces Win32 API calls, file system I/O, registry, network sockets, and loaded modules with a real-time TUI or stdout streaming mode."
 )]
 pub struct Cli {
     #[command(subcommand)]

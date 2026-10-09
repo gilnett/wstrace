@@ -175,19 +175,24 @@ wstrace --copy run <executable_path>
 
 ---
 
-## Security & OWASP Governance
+## Enterprise Compliance & Institutional Governance
 
-`wstrace` is built to comply with institutional security standards:
-- **Memory Safety:** Developed 100% in Rust, preventing buffer overflows, use-after-free, and race conditions at compile time.
-- **Zero-Driver Architecture:** Operates entirely in user-mode without kernel drivers, eliminating ring-0 attack surfaces, rootkit vectors, and BSOD stability risks.
-- **OWASP Rule #1 Compliance:** Zero hardcoded credentials, API keys, or private tokens in source code or version control history.
+`wstrace` is engineered to meet strict institutional requirements for deployment in high-security enterprise environments (banking, defense, healthcare, and critical infrastructure):
 
----
+### 1. Zero Cloud Data Leakage (Air-Gapped & Sovereign)
+`wstrace` is 100% offline and standalone. It maintains zero remote servers, initiates zero telemetry or analytics, and performs zero outbound network calls. Any sensitive data observed during live tracing (API tokens, file paths, credentials, memory contents) remains strictly confined to local RAM and never leaves the workstation.
 
-## Privacy & GDPR (RGPD) Compliance
+### 2. Zero Kernel Drivers (Zero Ring-0 Footprint)
+Unlike traditional tracing utilities that install third-party `.sys` kernel drivers—introducing system crash risks (Blue Screen of Death / BSOD) and ring-0 backdoor attack surfaces—`wstrace` operates with zero kernel drivers. It relies exclusively on non-invasive userland Win32 debugging and native Windows Kernel ETW consumer interfaces.
 
-- **Privacy by Design:** `wstrace` is completely air-gapped and offline. It does not contain telemetry, tracking SDKs, or outbound network calls.
-- **Local Data Isolation:** All captured telemetry, JSON export files, and clipboard buffers reside strictly on the user's local workstation under their exclusive custody.
+### 3. Strict Local Access Control & Session Isolation
+Trace telemetry is strictly bounded by the Windows user session and Mandatory Integrity Control (MIC) boundaries. Unprivileged user sessions cannot access or inspect higher-integrity processes without explicit administrator elevation, adhering strictly to the principle of least privilege.
+
+### 4. Regulatory & Standard Alignment
+- **SOC 2 Type II & ISO/IEC 27001 Alignment:** Complete data sovereignty, zero external data egress, and auditable build provenance.
+- **GDPR (RGPD) & CCPA Compliance:** *Privacy by Design* architecture. Zero personal data collection, profiling, tracking, or commercialization.
+- **EU Cyber Resilience Act (CRA) Readiness:** Documented security disclosure policy ([SECURITY.md](.github/SECURITY.md)), automated CVE dependency scanning via Dependabot, and third-party license audit inventory ([THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)).
+- **OWASP Rule #1 Compliance:** Zero hardcoded secrets, credentials, or private API keys across the codebase and version control history.
 
 ---
 

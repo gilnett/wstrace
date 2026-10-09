@@ -12,7 +12,7 @@ jobs:
     name: Tests & Verification (x86_64)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Run Unit & Perf Tests
         run: cargo test --verbose
@@ -27,14 +27,14 @@ jobs:
           - x86_64-pc-windows-msvc
           - aarch64-pc-windows-msvc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
       - name: Build Release Binary
         run: cargo build --release --target ${{ matrix.target }}
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wstrace-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/wstrace.exe

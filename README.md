@@ -189,6 +189,17 @@ wstrace --copy run <executable_path>
 
 ---
 
+## Acknowledgements & Third-Party Credits
+
+`wstrace` is proud to build upon the Rust open-source ecosystem and acknowledges the following foundational libraries:
+- [Ratatui](https://github.com/ratatui/ratatui) (MIT) — Modern terminal user interface (TUI) layout and rendering engine.
+- [Crossterm](https://github.com/crossterm-rs/crossterm) (MIT) — Cross-platform terminal manipulation and raw input control.
+- [windows-sys](https://github.com/microsoft/windows-rs) (MIT / Apache-2.0) — Official Microsoft Win32 and Kernel ETW API bindings.
+
+For complete license notices and terms, see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+---
+
 ## Support & Sponsorship
 
 If you find `wstrace` useful for your Windows engineering, security audits, or performance debugging, you can support development via GitHub Sponsors or Ko-fi:

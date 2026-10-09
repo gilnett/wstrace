@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Security audit check
-        uses: rustsec/audit-check@v2.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install prebuilt cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+      - name: Run Security Audit
+        run: cargo audit --deny warnings
 
   test-and-lint:
     name: Tests & Verification (x86_64)

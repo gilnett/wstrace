@@ -165,7 +165,8 @@ wstrace --copy run <executable_path>
 
 ## Architecture & Compatibility
 
-- **Language:** Rust (2021 Edition)
+- **Core Engine:** Rust (2021 Edition)
+- **Installer & Deployment:** PowerShell (`packaging/install.ps1`)
 - **Terminal UI:** Ratatui + Crossterm
 - **Telemetry Ingestion:** Win32 APIs (`ToolHelp32Snapshot`, `OpenProcess`, `VirtualQueryEx`) & Event Tracing for Windows (`ETW`).
 - **Target Architectures:**

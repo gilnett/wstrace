@@ -34,7 +34,7 @@ jobs:
       - name: Build Release Binary
         run: cargo build --release --target ${{ matrix.target }}
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wstrace-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/wstrace.exe

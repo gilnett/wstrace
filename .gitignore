@@ -1,5 +1,6 @@
 /target
 Cargo.lock
 *.tmp
+*.zip
 Thumbs.db
 .DS_Store

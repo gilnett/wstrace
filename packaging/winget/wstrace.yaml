@@ -1,0 +1,26 @@
+# Winget Package Manifest for wstrace
+PackageIdentifier: gilnett.wstrace
+PackageVersion: 0.1.0
+PackageName: wstrace
+Publisher: gilnett
+License: MIT
+ShortDescription: Modern strace & realtime Process Monitor TUI for Windows
+Moniker: wstrace
+Tags:
+  - strace
+  - procmon
+  - sysinternals
+  - win32
+  - tui
+  - tracing
+Installers:
+  - Architecture: x64
+    InstallerType: portable
+    Commands:
+      - wstrace
+  - Architecture: arm64
+    InstallerType: portable
+    Commands:
+      - wstrace
+ManifestType: singleton
+ManifestVersion: 1.6.0

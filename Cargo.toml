@@ -1,0 +1,29 @@
+[package]
+name = "wstrace"
+version = "0.1.0"
+edition = "2021"
+authors = ["Gilles"]
+license = "GPL-3.0-or-later"
+description = "High-performance zero-driver Windows system and API monitor in Rust"
+
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_Etw",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_Security",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Memory",
+] }
+crossterm = "0.28"
+ratatui = "0.29"
+crossbeam-channel = "0.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
+anyhow = "1.0"

@@ -8,7 +8,17 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  security-audit:
+    name: Security Audit (RustSec CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Security audit check
+        uses: rustsec/audit-check@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  test-and-lint:
     name: Tests & Verification (x86_64)
     runs-on: windows-latest
     steps:
@@ -16,17 +26,65 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+
+      - name: Anti-Binary Leak Check
+        shell: pwsh
+        run: |
+          $binaries = git ls-files | Where-Object { $_ -match '\.(exe|zip|msi|dll|pdb|tar|gz)$' }
+          if ($binaries) {
+            Write-Error "CRITICAL: Binary files detected in repository: $binaries"
+            exit 1
+          }
+          Write-Host "No tracked binaries found in Git tree."
+
       - name: Code Formatting Check (rustfmt)
         run: cargo fmt --check
+
       - name: Static Analysis & Security Lint (clippy)
         run: cargo clippy --all-targets -- -D warnings
+
       - name: Run Unit & Perf Tests
         run: cargo test --verbose
+
+      - name: Validate Packaging Manifests
+        shell: pwsh
+        run: |
+          # 1. Check version in Cargo.toml
+          $cargo = Get-Content Cargo.toml -Raw
+          if ($cargo -notmatch '(?m)^version\s*=\s*"([^"]+)"') {
+            Write-Error "Could not parse version from Cargo.toml"
+            exit 1
+          }
+          $version = $Matches[1]
+          Write-Host "Cargo version: $version"
+
+          # 2. Check Scoop manifest
+          $scoop = Get-Content packaging/scoop/wstrace.json -Raw | ConvertFrom-Json
+          if ($scoop.version -ne $version) {
+            Write-Error "Scoop version ($($scoop.version)) != Cargo.toml version ($version)"
+            exit 1
+          }
+          Write-Host "Scoop manifest syntax and version verified."
+
+          # 3. Check Winget manifest
+          $winget = Get-Content packaging/winget/wstrace.yaml -Raw
+          if ($winget -notmatch "(?m)^PackageVersion:\s*$version") {
+            Write-Error "Winget PackageVersion does not match Cargo.toml version ($version)"
+            exit 1
+          }
+          if ($winget -notmatch "(?m)^PackageLocale:\s*en-US") {
+            Write-Error "Winget manifest missing required PackageLocale: en-US"
+            exit 1
+          }
+          Write-Host "Winget manifest syntax and version verified."
+
+          # 4. Winget native schema validation
+          winget validate --manifest packaging/winget/wstrace.yaml
 
   build-matrix:
     name: Build (${{ matrix.target }})
     runs-on: windows-latest
-    needs: test
+    needs: test-and-lint
     strategy:
       matrix:
         target:

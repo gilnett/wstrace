@@ -38,10 +38,12 @@ Please disclose any AI assistance used during the conception, writing, or refact
 
 ---
 
-## Contributor Agreement & Security Checklist
+## Contributor Agreement, Enterprise Compliance & Security Checklist
 
 By submitting this pull request, I confirm that:
-- [ ] I have read and agree to the Contributor License Agreement (CLA) in [CONTRIBUTING.md](CONTRIBUTING.md).
-- [ ] This submission is compliant with the project's licensing and I have full authority to submit it.
-- [ ] No hardcoded secrets, credentials, or API tokens are present in this code (OWASP Rule #1).
-- [ ] No network telemetry, third-party tracking, or remote calls have been introduced (Privacy by Design).
+- [ ] **Contributor License Agreement (CLA)**: I have read and agree to the CLA in [CONTRIBUTING.md](CONTRIBUTING.md), certifying original authorship and granting full project governance rights.
+- [ ] **Zero Cloud Leaks (Air-Gapped & Sovereign)**: No network telemetry, third-party tracking, or remote network calls/sockets have been introduced (SOC 2, ISO 27001, GDPR & CCPA).
+- [ ] **Zero Kernel Drivers (Zero Ring-0 Footprint)**: No third-party `.sys` kernel drivers, ring-0 hooks, or unstable driver routines are introduced; all logic strictly adheres to userland Win32 and native OS ETW.
+- [ ] **Local Access Control & Least Privilege**: Changes respect Windows security boundaries, user session isolation, and Mandatory Integrity Control (MIC) without unverified privilege escalation.
+- [ ] **OWASP Rule #1**: Zero hardcoded credentials, secrets, private keys, or API tokens are present in this code.
+- [ ] **Licensing & Dependencies**: Any new dependencies are strictly permissively licensed (MIT or Apache-2.0) and documented for SBOM compliance.

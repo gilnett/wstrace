@@ -1,16 +1,21 @@
 {
   "version": "0.1.0",
-  "description": "Modern strace & realtime Process Monitor TUI for Windows",
+  "description": "High-performance zero-driver Windows system and API monitor in Rust",
   "homepage": "https://github.com/gilnett/wstrace",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "architecture": {
     "64bit": {
-      "bin": "wstrace.exe"
-    },
-    "arm64": {
-      "bin": "wstrace.exe"
+      "url": "https://github.com/gilnett/wstrace/releases/download/v0.1.0/wstrace-v0.1.0-windows-x86_64.zip",
+      "hash": "982ca68a86a0d56f4592e82a5bdb7004b598db4c75dc6a39335d66b18fa87977"
     }
   },
   "bin": "wstrace.exe",
-  "checkver": "github"
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/gilnett/wstrace/releases/download/v$version/wstrace-v$version-windows-x86_64.zip"
+      }
+    }
+  }
 }

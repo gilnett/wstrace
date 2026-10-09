@@ -1,14 +1,22 @@
-# wstrace
+<p align="center">
+  <img src="assets/logo.svg" alt="wstrace logo" width="140" height="140" />
+</p>
 
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/gilnett)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Project-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/gilnet)
+<h1 align="center">wstrace</h1>
 
+<p align="center">
+  <strong>High-performance zero-driver Windows system and API monitor in Rust.</strong>
+</p>
 
-Modern strace and real-time Process Monitor for Windows.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL-3.0" /></a>
+  <a href="https://github.com/sponsors/gilnett"><img src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?logo=githubsponsors&logoColor=white" alt="GitHub Sponsors" /></a>
+  <a href="https://ko-fi.com/gilnet"><img src="https://img.shields.io/badge/Ko--fi-Support%20Project-FF5E5B?logo=kofi&logoColor=white" alt="Ko-fi" /></a>
+</p>
 
-
-Built in native Rust with zero kernel drivers required, `wstrace` provides a 60 FPS terminal user interface (TUI) and an unbuffered stdout stream mode for system diagnostics.
+<p align="center">
+  Modern <code>strace</code> and real-time Process Monitor for Windows. Built in native Rust with zero kernel drivers required, featuring a real-time terminal user interface (TUI) and unbuffered streaming for headless diagnostics.
+</p>
 
 ---
 
@@ -66,7 +74,7 @@ wstrace --version
 
 ### Interactive TUI Mode
 
-Launches the target application with a 60 FPS real-time event table:
+Launches the target application with a real-time event table:
 
 ```bash
 wstrace run <executable_path> [-- <arguments>...]

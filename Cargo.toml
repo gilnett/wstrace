@@ -2,7 +2,7 @@
 name = "wstrace"
 version = "0.1.0"
 edition = "2021"
-authors = ["Gilles"]
+authors = ["gilnett"]
 license = "GPL-3.0-or-later"
 description = "High-performance zero-driver Windows system and API monitor in Rust"
 

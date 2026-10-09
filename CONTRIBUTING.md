@@ -23,7 +23,7 @@ To protect the project, its users, and its long-term viability (including potent
 By submitting a Pull Request, patch, issue code, or any other content to this repository, you ("Contributor") explicitly agree to the following terms:
 
 1. **Original Work:** You certify that the contribution is your original creation and that you have the full legal right to grant the rights described herein.
-2. **Grant of Rights:** You grant the project maintainer (**Gilles**) a perpetual, worldwide, irrevocable, royalty-free, transferable, and sublicensable right and license to use, reproduce, adapt, modify, perform, display, publish, sublicense, relicense (including under commercial, dual, or proprietary licenses), distribute, and commercialize your contributions in any medium.
+2. **Grant of Rights:** You grant the project maintainer (**gilnett**) a perpetual, worldwide, irrevocable, royalty-free, transferable, and sublicensable right and license to use, reproduce, adapt, modify, perform, display, publish, sublicense, relicense (including under commercial, dual, or proprietary licenses), distribute, and commercialize your contributions in any medium.
 3. **Single Ownership Integrity:** You acknowledge that this agreement ensures single-party governance over the project's intellectual property, preventing fragmented copyright ownership that would otherwise impede corporate restructuring, commercial dual-licensing, or technology transfers.
 
 ---

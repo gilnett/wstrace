@@ -1,7 +1,9 @@
 # wstrace
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/gilnett)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Project-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/gilnet)
+
 
 Modern strace and real-time Process Monitor for Windows.
 
@@ -189,10 +191,13 @@ wstrace --copy run <executable_path>
 
 ## Support & Sponsorship
 
-If you find `wstrace` useful for your Windows engineering, security audits, or performance debugging, you can support development via Ko-fi:
+If you find `wstrace` useful for your Windows engineering, security audits, or performance debugging, you can support development via GitHub Sponsors or Ko-fi:
 
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/gilnett)
 [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20the%20Author-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white)](https://ko-fi.com/gilnet)
 
-Direct link: [https://ko-fi.com/gilnet](https://ko-fi.com/gilnet)
+- **GitHub Sponsors:** [https://github.com/sponsors/gilnett](https://github.com/sponsors/gilnett)
+- **Ko-fi:** [https://ko-fi.com/gilnet](https://ko-fi.com/gilnet)
+
 
 

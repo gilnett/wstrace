@@ -50,10 +50,16 @@ impl App {
         if event.operation == "ProcessHandOff" {
             self.target_pid = event.pid;
             self.is_terminated = false;
-            if let Some(app_name) = event.details.strip_prefix("Handoff to packaged application: ") {
+            if let Some(app_name) = event
+                .details
+                .strip_prefix("Handoff to packaged application: ")
+            {
                 self.target_name = app_name.to_string();
             }
-            self.status_message = Some(format!("[HANDOFF] Tracing target application (PID: {})", event.pid));
+            self.status_message = Some(format!(
+                "[HANDOFF] Tracing target application (PID: {})",
+                event.pid
+            ));
         }
 
         if event.operation == "ProcessExit" && event.pid == self.target_pid {
@@ -68,7 +74,6 @@ impl App {
             }
         }
     }
-
 
     pub fn filtered_events(&self) -> Vec<(usize, &TraceEvent)> {
         self.events
@@ -158,7 +163,9 @@ impl App {
 
     pub fn selected_event(&self) -> Option<TraceEvent> {
         let filtered = self.filtered_events();
-        filtered.get(self.selected_index).map(|(_, ev)| (*ev).clone())
+        filtered
+            .get(self.selected_index)
+            .map(|(_, ev)| (*ev).clone())
     }
 
     pub fn copy_selected_to_clipboard(&mut self) -> bool {
@@ -176,7 +183,8 @@ impl App {
             if success {
                 self.status_message = Some(format!("[COPIED TO CLIPBOARD] {}", ev.target));
             } else {
-                self.status_message = Some("[CLIPBOARD ERROR] Failed to access clipboard".to_string());
+                self.status_message =
+                    Some("[CLIPBOARD ERROR] Failed to access clipboard".to_string());
             }
             success
         } else {
@@ -207,7 +215,10 @@ impl App {
 
         let success = crate::tui::clipboard::set_clipboard_text(&buffer);
         if success {
-            self.status_message = Some(format!("[COPIED ALL] {} events copied to clipboard", filtered.len()));
+            self.status_message = Some(format!(
+                "[COPIED ALL] {} events copied to clipboard",
+                filtered.len()
+            ));
         } else {
             self.status_message = Some("[CLIPBOARD ERROR] Failed to access clipboard".to_string());
         }
@@ -222,8 +233,26 @@ mod tests {
     #[test]
     fn test_failure_filtering_invariant() {
         let mut app = App::new(100, "process.exe".to_string(), false, None, None);
-        app.push_event(TraceEvent::new(1, 100, 1, EventCategory::FileSystem, "NtCreateFile", "\\path\\success", "STATUS_SUCCESS", false));
-        app.push_event(TraceEvent::new(2, 100, 1, EventCategory::FileSystem, "NtCreateFile", "\\path\\error", "STATUS_OBJECT_NAME_NOT_FOUND", true));
+        app.push_event(TraceEvent::new(
+            1,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtCreateFile",
+            "\\path\\success",
+            "STATUS_SUCCESS",
+            false,
+        ));
+        app.push_event(TraceEvent::new(
+            2,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtCreateFile",
+            "\\path\\error",
+            "STATUS_OBJECT_NAME_NOT_FOUND",
+            true,
+        ));
 
         assert_eq!(app.filtered_events().len(), 2);
 
@@ -244,9 +273,36 @@ mod tests {
             Some("Cache".to_string()),
         );
 
-        app.push_event(TraceEvent::new(1, 100, 1, EventCategory::FileSystem, "NtOpenFile", "\\AppData\\Roaming\\config.json", "STATUS_SUCCESS", false));
-        app.push_event(TraceEvent::new(2, 100, 1, EventCategory::FileSystem, "NtOpenFile", "\\AppData\\Roaming\\Cache\\data.bin", "STATUS_SUCCESS", false));
-        app.push_event(TraceEvent::new(3, 100, 1, EventCategory::FileSystem, "NtOpenFile", "\\Windows\\System32\\ntdll.dll", "STATUS_SUCCESS", false));
+        app.push_event(TraceEvent::new(
+            1,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtOpenFile",
+            "\\AppData\\Roaming\\config.json",
+            "STATUS_SUCCESS",
+            false,
+        ));
+        app.push_event(TraceEvent::new(
+            2,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtOpenFile",
+            "\\AppData\\Roaming\\Cache\\data.bin",
+            "STATUS_SUCCESS",
+            false,
+        ));
+        app.push_event(TraceEvent::new(
+            3,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtOpenFile",
+            "\\Windows\\System32\\ntdll.dll",
+            "STATUS_SUCCESS",
+            false,
+        ));
 
         let filtered = app.filtered_events();
         assert_eq!(filtered.len(), 1);
@@ -277,29 +333,74 @@ mod tests {
     #[test]
     fn test_pause_buffer_isolation() {
         let mut app = App::new(100, "process.exe".to_string(), false, None, None);
-        app.push_event(TraceEvent::new(1, 100, 1, EventCategory::Process, "CreateThread", "TID: 1001", "STATUS_SUCCESS", false));
+        app.push_event(TraceEvent::new(
+            1,
+            100,
+            1,
+            EventCategory::Process,
+            "CreateThread",
+            "TID: 1001",
+            "STATUS_SUCCESS",
+            false,
+        ));
         assert_eq!(app.events.len(), 1);
 
         app.toggle_pause();
         assert!(app.is_paused);
 
         // While paused, mutations to live stream must be discarded
-        app.push_event(TraceEvent::new(2, 100, 2, EventCategory::Process, "CreateThread", "TID: 1002", "STATUS_SUCCESS", false));
+        app.push_event(TraceEvent::new(
+            2,
+            100,
+            2,
+            EventCategory::Process,
+            "CreateThread",
+            "TID: 1002",
+            "STATUS_SUCCESS",
+            false,
+        ));
         assert_eq!(app.events.len(), 1);
 
         app.toggle_pause();
         assert!(!app.is_paused);
 
         // After resuming, new events are pushed normally
-        app.push_event(TraceEvent::new(3, 100, 3, EventCategory::Process, "CreateThread", "TID: 1003", "STATUS_SUCCESS", false));
+        app.push_event(TraceEvent::new(
+            3,
+            100,
+            3,
+            EventCategory::Process,
+            "CreateThread",
+            "TID: 1003",
+            "STATUS_SUCCESS",
+            false,
+        ));
         assert_eq!(app.events.len(), 2);
     }
 
     #[test]
     fn test_clear_events_invariant() {
         let mut app = App::new(100, "process.exe".to_string(), false, None, None);
-        app.push_event(TraceEvent::new(1, 100, 1, EventCategory::Process, "CreateThread", "TID: 1001", "STATUS_SUCCESS", false));
-        app.push_event(TraceEvent::new(2, 100, 2, EventCategory::FileSystem, "NtCreateFile", "C:\\test.txt", "STATUS_SUCCESS", false));
+        app.push_event(TraceEvent::new(
+            1,
+            100,
+            1,
+            EventCategory::Process,
+            "CreateThread",
+            "TID: 1001",
+            "STATUS_SUCCESS",
+            false,
+        ));
+        app.push_event(TraceEvent::new(
+            2,
+            100,
+            2,
+            EventCategory::FileSystem,
+            "NtCreateFile",
+            "C:\\test.txt",
+            "STATUS_SUCCESS",
+            false,
+        ));
         assert_eq!(app.events.len(), 2);
 
         app.clear_events();
@@ -317,7 +418,16 @@ mod tests {
         assert!(app.status_message.as_ref().unwrap().contains("EMPTY"));
 
         // With event present
-        app.push_event(TraceEvent::new(1, 100, 1, EventCategory::FileSystem, "NtOpenFile", "C:\\Windows\\notepad.exe", "STATUS_SUCCESS", false));
+        app.push_event(TraceEvent::new(
+            1,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtOpenFile",
+            "C:\\Windows\\notepad.exe",
+            "STATUS_SUCCESS",
+            false,
+        ));
         let selected = app.selected_event();
         assert!(selected.is_some());
         assert_eq!(selected.unwrap().target, "C:\\Windows\\notepad.exe");
@@ -325,7 +435,11 @@ mod tests {
         // Copy execution
         let copied = app.copy_selected_to_clipboard();
         assert!(copied);
-        assert!(app.status_message.as_ref().unwrap().contains("COPIED TO CLIPBOARD"));
+        assert!(app
+            .status_message
+            .as_ref()
+            .unwrap()
+            .contains("COPIED TO CLIPBOARD"));
     }
 
     #[test]
@@ -336,9 +450,27 @@ mod tests {
         assert!(app.status_message.as_ref().unwrap().contains("EMPTY"));
 
         // With multiple events
-        app.push_event(TraceEvent::new(1, 100, 1, EventCategory::FileSystem, "NtOpenFile", "C:\\file1.txt", "STATUS_SUCCESS", false));
-        app.push_event(TraceEvent::new(2, 100, 1, EventCategory::FileSystem, "NtOpenFile", "C:\\file2.txt", "STATUS_SUCCESS", false));
-        
+        app.push_event(TraceEvent::new(
+            1,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtOpenFile",
+            "C:\\file1.txt",
+            "STATUS_SUCCESS",
+            false,
+        ));
+        app.push_event(TraceEvent::new(
+            2,
+            100,
+            1,
+            EventCategory::FileSystem,
+            "NtOpenFile",
+            "C:\\file2.txt",
+            "STATUS_SUCCESS",
+            false,
+        ));
+
         let copied = app.copy_all_to_clipboard();
         assert!(copied);
         assert!(app.status_message.as_ref().unwrap().contains("COPIED ALL"));
@@ -364,8 +496,16 @@ mod tests {
 
         app.push_event(exit_evt);
         assert!(app.is_terminated);
-        assert!(app.status_message.as_ref().unwrap().contains("[PROCESS EXITED]"));
-        assert!(app.status_message.as_ref().unwrap().contains("Exit Code: 0"));
+        assert!(app
+            .status_message
+            .as_ref()
+            .unwrap()
+            .contains("[PROCESS EXITED]"));
+        assert!(app
+            .status_message
+            .as_ref()
+            .unwrap()
+            .contains("Exit Code: 0"));
     }
 
     #[test]
@@ -421,4 +561,3 @@ mod tests {
         assert!(app.is_terminated);
     }
 }
-

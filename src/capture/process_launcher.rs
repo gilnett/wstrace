@@ -1,8 +1,7 @@
+use anyhow::{Context, Result};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::process::{Child, Command};
-use anyhow::{Context, Result};
-
 
 pub struct LaunchedProcess {
     pub pid: u32,
@@ -33,6 +32,4 @@ pub fn spawn_target_process(
 
     let pid = child.id();
     Ok(LaunchedProcess { pid, child })
-
 }
-

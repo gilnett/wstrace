@@ -26,7 +26,10 @@ fn main() -> Result<()> {
 
     // Resolve target PID and process name
     let (target_pid, target_name) = match &args.command {
-        Commands::Run { command, args: cmd_args } => {
+        Commands::Run {
+            command,
+            args: cmd_args,
+        } => {
             if args.mode == OutputMode::Stream {
                 println!("[INFO] Launching target binary: '{}'", command);
             }
@@ -87,7 +90,9 @@ fn main() -> Result<()> {
 
             ctrlc_handler(r_clone);
 
-            let timeout = args.duration.map(|d| std::time::Instant::now() + Duration::from_secs(d));
+            let timeout = args
+                .duration
+                .map(|d| std::time::Instant::now() + Duration::from_secs(d));
             let mut active_pid = target_pid;
 
             while running.load(Ordering::Relaxed) {
@@ -118,7 +123,11 @@ fn main() -> Result<()> {
                         }
                     }
 
-                    let res_color = if ev.is_failure { "\x1b[91m" } else { "\x1b[92m" };
+                    let res_color = if ev.is_failure {
+                        "\x1b[91m"
+                    } else {
+                        "\x1b[92m"
+                    };
                     use std::io::Write;
                     let write_res = writeln!(
                         std::io::stdout(),
@@ -134,7 +143,6 @@ fn main() -> Result<()> {
                         running.store(false, Ordering::Relaxed);
                         break;
                     }
-
 
                     if ev.operation == "ProcessHandOff" {
                         active_pid = ev.pid;
@@ -153,7 +161,6 @@ fn main() -> Result<()> {
         }
     }
 
-
     // Stop probes
     probe.stop();
     etw.stop();
@@ -162,12 +169,16 @@ fn main() -> Result<()> {
     if !collected_events.is_empty() {
         let total = collected_events.len();
         let failures = collected_events.iter().filter(|e| e.is_failure).count();
-        let unique_targets: std::collections::HashSet<&str> = collected_events.iter().map(|e| e.target.as_str()).collect();
+        let unique_targets: std::collections::HashSet<&str> =
+            collected_events.iter().map(|e| e.target.as_str()).collect();
 
         println!("\n========================================================");
         println!("                FINAL TRACE SUMMARY REPORT              ");
         println!("========================================================");
-        println!("  Target Process        : {} (PID: {})", target_name, target_pid);
+        println!(
+            "  Target Process        : {} (PID: {})",
+            target_name, target_pid
+        );
         println!("  Captured Events       : {}", total);
         println!("  Failures / Errors     : {}", failures);
         println!("  Unique Target Modules : {}", unique_targets.len());
@@ -197,7 +208,10 @@ fn main() -> Result<()> {
             ));
         }
         if tui::clipboard::set_clipboard_text(&buffer) {
-            println!("[OK] All {} events copied to Windows clipboard.", collected_events.len());
+            println!(
+                "[OK] All {} events copied to Windows clipboard.",
+                collected_events.len()
+            );
         }
     }
 
@@ -223,7 +237,11 @@ fn find_pid_by_name(name: &str) -> Option<u32> {
         if Process32FirstW(h_snap, &mut pe) != 0 {
             loop {
                 let proc_name = String::from_utf16_lossy(
-                    &pe.szExeFile[..pe.szExeFile.iter().position(|&c| c == 0).unwrap_or(pe.szExeFile.len())],
+                    &pe.szExeFile[..pe
+                        .szExeFile
+                        .iter()
+                        .position(|&c| c == 0)
+                        .unwrap_or(pe.szExeFile.len())],
                 );
                 if proc_name.to_lowercase() == name.to_lowercase() {
                     CloseHandle(h_snap);

@@ -5,8 +5,8 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use crossbeam_channel::Sender;
 use crate::event::TraceEvent;
+use crossbeam_channel::Sender;
 
 pub struct EtwConsumer {
     pid: u32,

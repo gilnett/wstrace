@@ -33,11 +33,29 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     let total_count = app.events.len();
 
     let status_badge = if app.is_terminated {
-        Span::styled(" [TERMINATED] ", Style::default().bg(Color::Red).fg(Color::White).add_modifier(Modifier::BOLD))
+        Span::styled(
+            " [TERMINATED] ",
+            Style::default()
+                .bg(Color::Red)
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
     } else if app.is_paused {
-        Span::styled(" [PAUSED] ", Style::default().bg(Color::Yellow).fg(Color::Black).add_modifier(Modifier::BOLD))
+        Span::styled(
+            " [PAUSED] ",
+            Style::default()
+                .bg(Color::Yellow)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD),
+        )
     } else {
-        Span::styled(" [LIVE] ", Style::default().bg(Color::Green).fg(Color::Black).add_modifier(Modifier::BOLD))
+        Span::styled(
+            " [LIVE] ",
+            Style::default()
+                .bg(Color::Green)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD),
+        )
     };
 
     let cat_text = match app.filter_category {
@@ -46,24 +64,48 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     };
 
     let filter_badge = if app.filter_failures_only {
-        Span::styled(" [FAILURES ONLY] ", Style::default().bg(Color::Red).fg(Color::White))
+        Span::styled(
+            " [FAILURES ONLY] ",
+            Style::default().bg(Color::Red).fg(Color::White),
+        )
     } else {
-        Span::styled(format!(" [CAT: {}] ", cat_text), Style::default().fg(Color::Cyan))
+        Span::styled(
+            format!(" [CAT: {}] ", cat_text),
+            Style::default().fg(Color::Cyan),
+        )
     };
 
     let target_tag = if app.events.iter().any(|e| e.operation == "ProcessHandOff") {
         " [Target App]"
-    } else if app.events.iter().any(|e| e.operation == "LauncherAttach" || e.operation == "LauncherExit") {
+    } else if app
+        .events
+        .iter()
+        .any(|e| e.operation == "LauncherAttach" || e.operation == "LauncherExit")
+    {
         " [Launcher]"
     } else {
         ""
     };
 
     let header_line = Line::from(vec![
-        Span::styled(" wstrace ", Style::default().bg(Color::Blue).fg(Color::White).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " wstrace ",
+            Style::default()
+                .bg(Color::Blue)
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" | Target: "),
-        Span::styled(format!("{}{}", app.target_name, target_tag), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-        Span::raw(format!(" (PID: {}) | Events: {}/{} |", app.target_pid, filtered_count, total_count)),
+        Span::styled(
+            format!("{}{}", app.target_name, target_tag),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(format!(
+            " (PID: {}) | Events: {}/{} |",
+            app.target_pid, filtered_count, total_count
+        )),
         status_badge,
         filter_badge,
     ]);
@@ -99,41 +141,60 @@ fn render_events_table(frame: &mut Frame, area: Rect, app: &mut App) {
 
             let is_selected = i == app.selected_index;
             let style = if is_selected {
-                Style::default().bg(Color::DarkGray).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
 
             let op_cell = match ev.operation.as_str() {
-                "LauncherAttach" | "LauncherExit" => {
-                    Cell::from(Span::styled(ev.operation.as_str(), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)))
-                }
-                "ProcessHandOff" => {
-                    Cell::from(Span::styled(ev.operation.as_str(), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)))
-                }
+                "LauncherAttach" | "LauncherExit" => Cell::from(Span::styled(
+                    ev.operation.as_str(),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )),
+                "ProcessHandOff" => Cell::from(Span::styled(
+                    ev.operation.as_str(),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                )),
                 _ => Cell::from(ev.operation.as_str()),
             };
 
             let details_cell = if ev.details.starts_with("[Launcher]") {
-                Cell::from(Span::styled(ev.details.as_str(), Style::default().fg(Color::Rgb(255, 200, 100))))
+                Cell::from(Span::styled(
+                    ev.details.as_str(),
+                    Style::default().fg(Color::Rgb(255, 200, 100)),
+                ))
             } else if ev.details.starts_with("[Target App]") {
-                Cell::from(Span::styled(ev.details.as_str(), Style::default().fg(Color::Rgb(120, 230, 120))))
+                Cell::from(Span::styled(
+                    ev.details.as_str(),
+                    Style::default().fg(Color::Rgb(120, 230, 120)),
+                ))
             } else {
                 Cell::from(ev.details.as_str())
             };
 
             Row::new(vec![
                 Cell::from(ev.timestamp.as_str()),
-                Cell::from(Span::styled(ev.category.as_str(), Style::default().fg(cat_color))),
+                Cell::from(Span::styled(
+                    ev.category.as_str(),
+                    Style::default().fg(cat_color),
+                )),
                 op_cell,
                 Cell::from(ev.target.as_str()),
-                Cell::from(Span::styled(ev.result.as_str(), Style::default().fg(res_color))),
+                Cell::from(Span::styled(
+                    ev.result.as_str(),
+                    Style::default().fg(res_color),
+                )),
                 details_cell,
             ])
             .style(style)
         })
         .collect();
-
 
     let widths = [
         Constraint::Length(12),
@@ -146,11 +207,26 @@ fn render_events_table(frame: &mut Frame, area: Rect, app: &mut App) {
 
     let table = Table::new(rows, widths)
         .header(
-            Row::new(vec!["Time", "Cat", "Operation", "Target / Path / Key", "Result", "Details"])
-                .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
-                .bottom_margin(0),
+            Row::new(vec![
+                "Time",
+                "Cat",
+                "Operation",
+                "Target / Path / Key",
+                "Result",
+                "Details",
+            ])
+            .style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .bottom_margin(0),
         )
-        .block(Block::default().borders(Borders::ALL).title(" Event Stream "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Event Stream "),
+        );
 
     let mut state = TableState::default();
     if !filtered.is_empty() {
@@ -169,7 +245,14 @@ fn render_detail_pane(frame: &mut Frame, area: Rect, app: &App) {
                 Span::raw(format!("{} (TID: {})", ev.operation, ev.tid)),
                 Span::raw(" | "),
                 Span::styled("Result: ", Style::default().fg(Color::Yellow)),
-                Span::styled(&ev.result, if ev.is_failure { Style::default().fg(Color::Red) } else { Style::default().fg(Color::Green) }),
+                Span::styled(
+                    &ev.result,
+                    if ev.is_failure {
+                        Style::default().fg(Color::Red)
+                    } else {
+                        Style::default().fg(Color::Green)
+                    },
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Target: ", Style::default().fg(Color::Cyan)),
@@ -181,7 +264,10 @@ fn render_detail_pane(frame: &mut Frame, area: Rect, app: &App) {
             ]),
         ]
     } else {
-        vec![Line::from(Span::styled("No event selected.", Style::default().fg(Color::DarkGray)))]
+        vec![Line::from(Span::styled(
+            "No event selected.",
+            Style::default().fg(Color::DarkGray),
+        ))]
     };
 
     let block = Block::default()
@@ -193,9 +279,19 @@ fn render_detail_pane(frame: &mut Frame, area: Rect, app: &App) {
 
 fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     let mut help_spans = vec![
-        Span::styled("[Ctrl+C]", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "[Ctrl+C]",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" Copy  "),
-        Span::styled("[Ctrl+A]", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "[Ctrl+A]",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(" Copy All  "),
         Span::styled("[Ctrl+E/Space]", Style::default().fg(Color::Yellow)),
         Span::raw(" Pause  "),
@@ -213,7 +309,12 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
 
     if let Some(msg) = &app.status_message {
         help_spans.push(Span::raw("  |  "));
-        help_spans.push(Span::styled(msg, Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)));
+        help_spans.push(Span::styled(
+            msg,
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        ));
     }
 
     let paragraph = Paragraph::new(Line::from(help_spans));

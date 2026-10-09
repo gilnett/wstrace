@@ -41,6 +41,7 @@ pub struct TraceEvent {
 }
 
 impl TraceEvent {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: u64,
         pid: u32,
@@ -102,7 +103,8 @@ mod tests {
         assert!(!event.is_failure);
 
         let serialized = serde_json::to_string(&event).expect("Serialization must succeed");
-        let deserialized: TraceEvent = serde_json::from_str(&serialized).expect("Deserialization must succeed");
+        let deserialized: TraceEvent =
+            serde_json::from_str(&serialized).expect("Deserialization must succeed");
 
         assert_eq!(deserialized.id, event.id);
         assert_eq!(deserialized.pid, event.pid);

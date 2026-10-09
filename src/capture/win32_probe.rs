@@ -78,8 +78,16 @@ impl Win32Probe {
                 root_pid,
                 0,
                 EventCategory::Process,
-                if is_launcher { "LauncherAttach" } else { "ProcessAttach" },
-                if is_launcher { format!("PID: {} [Launcher]", root_pid) } else { format!("PID: {}", root_pid) },
+                if is_launcher {
+                    "LauncherAttach"
+                } else {
+                    "ProcessAttach"
+                },
+                if is_launcher {
+                    format!("PID: {} [Launcher]", root_pid)
+                } else {
+                    format!("PID: {}", root_pid)
+                },
                 "STATUS_SUCCESS",
                 false,
             );
@@ -107,7 +115,8 @@ impl Win32Probe {
                         let test_h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, root_pid);
                         if !test_h.is_null() {
                             let mut code = 0u32;
-                            let dead = GetExitCodeProcess(test_h, &mut code) != 0 && code != STILL_ACTIVE;
+                            let dead =
+                                GetExitCodeProcess(test_h, &mut code) != 0 && code != STILL_ACTIVE;
                             if dead {
                                 exit_code = code;
                             }
@@ -128,7 +137,9 @@ impl Win32Probe {
                         if !running.load(Ordering::Relaxed) {
                             break;
                         }
-                        if let Some(res) = find_handoff_process(&clean_target, root_pid, &monitored_pids) {
+                        if let Some(res) =
+                            find_handoff_process(&clean_target, root_pid, &monitored_pids)
+                        {
                             handoff_result = Some(res);
                             break;
                         }
@@ -161,11 +172,15 @@ impl Win32Probe {
                             0,
                             EventCategory::Process,
                             "ProcessHandOff",
-                            format!("PID: {} [Launcher] -> PID: {} [Target App]", root_pid, new_pid),
+                            format!(
+                                "PID: {} [Launcher] -> PID: {} [Target App]",
+                                root_pid, new_pid
+                            ),
                             "STATUS_SUCCESS",
                             false,
                         );
-                        handoff_evt.details = format!("Handoff to packaged application: {}", app_name);
+                        handoff_evt.details =
+                            format!("Handoff to packaged application: {}", app_name);
                         event_id += 1;
                         let _ = event_tx.send(handoff_evt);
 
@@ -180,7 +195,8 @@ impl Win32Probe {
                             "STATUS_SUCCESS",
                             false,
                         );
-                        app_att_evt.details = format!("Attached to target application: {}", app_name);
+                        app_att_evt.details =
+                            format!("Attached to target application: {}", app_name);
                         event_id += 1;
                         let _ = event_tx.send(app_att_evt);
 
@@ -190,7 +206,8 @@ impl Win32Probe {
                         launcher_pids.insert(root_pid);
                         root_pid = new_pid;
                         monitored_pids.insert(new_pid);
-                        h_proc = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, new_pid) };
+                        h_proc =
+                            unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, new_pid) };
                         is_launcher = false;
                         all_dead = false;
                     }
@@ -200,10 +217,13 @@ impl Win32Probe {
                     // Check if any tracked child process is still running
                     for &cpid in &monitored_pids {
                         if cpid != root_pid {
-                            let ch = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, cpid) };
+                            let ch =
+                                unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, cpid) };
                             if !ch.is_null() {
                                 let mut code = 0u32;
-                                let is_child_dead = unsafe { GetExitCodeProcess(ch, &mut code) != 0 && code != STILL_ACTIVE };
+                                let is_child_dead = unsafe {
+                                    GetExitCodeProcess(ch, &mut code) != 0 && code != STILL_ACTIVE
+                                };
                                 unsafe { CloseHandle(ch) };
                                 if !is_child_dead {
                                     all_dead = false;
@@ -216,7 +236,11 @@ impl Win32Probe {
 
                 if all_dead {
                     let is_root_launcher = launcher_pids.contains(&root_pid);
-                    let tag = if is_root_launcher { " [Launcher]" } else { " [Target App]" };
+                    let tag = if is_root_launcher {
+                        " [Launcher]"
+                    } else {
+                        " [Target App]"
+                    };
                     let mut evt = TraceEvent::new(
                         event_id,
                         root_pid,
@@ -224,7 +248,11 @@ impl Win32Probe {
                         EventCategory::Process,
                         "ProcessExit",
                         format!("PID: {}{}", root_pid, tag),
-                        if exit_code == 0 { "STATUS_SUCCESS" } else { "STATUS_UNSUCCESSFUL" },
+                        if exit_code == 0 {
+                            "STATUS_SUCCESS"
+                        } else {
+                            "STATUS_UNSUCCESSFUL"
+                        },
                         exit_code != 0,
                     );
                     evt.details = format!("Exit Code: {} (0x{:X})", exit_code, exit_code);
@@ -252,7 +280,11 @@ impl Win32Probe {
                                         monitored_pids.insert(child_pid);
 
                                         let child_name = String::from_utf16_lossy(
-                                            &pe.szExeFile[..pe.szExeFile.iter().position(|&c| c == 0).unwrap_or(pe.szExeFile.len())],
+                                            &pe.szExeFile[..pe
+                                                .szExeFile
+                                                .iter()
+                                                .position(|&c| c == 0)
+                                                .unwrap_or(pe.szExeFile.len())],
                                         );
 
                                         let mut evt = TraceEvent::new(
@@ -265,7 +297,8 @@ impl Win32Probe {
                                             "STATUS_SUCCESS",
                                             false,
                                         );
-                                        evt.details = format!("Parent PID: {}", pe.th32ParentProcessID);
+                                        evt.details =
+                                            format!("Parent PID: {}", pe.th32ParentProcessID);
                                         event_id += 1;
                                         let _ = event_tx.send(evt);
                                     }
@@ -284,7 +317,11 @@ impl Win32Probe {
                 let pids_to_check: Vec<u32> = monitored_pids.iter().copied().collect();
                 for &target_pid in &pids_to_check {
                     let is_curr_launcher = launcher_pids.contains(&target_pid);
-                    let tag = if is_curr_launcher { "[Launcher]" } else { "[Target App]" };
+                    let tag = if is_curr_launcher {
+                        "[Launcher]"
+                    } else {
+                        "[Target App]"
+                    };
 
                     unsafe {
                         let h_snap = CreateToolhelp32Snapshot(
@@ -298,10 +335,18 @@ impl Win32Probe {
                             if Module32FirstW(h_snap, &mut me) != 0 {
                                 loop {
                                     let mod_name = String::from_utf16_lossy(
-                                        &me.szModule[..me.szModule.iter().position(|&c| c == 0).unwrap_or(me.szModule.len())],
+                                        &me.szModule[..me
+                                            .szModule
+                                            .iter()
+                                            .position(|&c| c == 0)
+                                            .unwrap_or(me.szModule.len())],
                                     );
                                     let mod_path = String::from_utf16_lossy(
-                                        &me.szExePath[..me.szExePath.iter().position(|&c| c == 0).unwrap_or(me.szExePath.len())],
+                                        &me.szExePath[..me
+                                            .szExePath
+                                            .iter()
+                                            .position(|&c| c == 0)
+                                            .unwrap_or(me.szExePath.len())],
                                     );
 
                                     let key = (target_pid, mod_name.clone());
@@ -318,7 +363,12 @@ impl Win32Probe {
                                             "STATUS_SUCCESS",
                                             false,
                                         );
-                                        evt.details = format!("{} Base: 0x{:X}, Size: {} KB", tag, me.modBaseAddr as usize, me.modBaseSize / 1024);
+                                        evt.details = format!(
+                                            "{} Base: 0x{:X}, Size: {} KB",
+                                            tag,
+                                            me.modBaseAddr as usize,
+                                            me.modBaseSize / 1024
+                                        );
                                         event_id += 1;
                                         let _ = event_tx.send(evt);
                                     }
@@ -342,11 +392,18 @@ impl Win32Probe {
 
                         if Thread32First(h_snap, &mut te) != 0 {
                             loop {
-                                if monitored_pids.contains(&te.th32OwnerProcessID) && !known_threads.contains(&te.th32ThreadID) {
+                                if monitored_pids.contains(&te.th32OwnerProcessID)
+                                    && !known_threads.contains(&te.th32ThreadID)
+                                {
                                     known_threads.insert(te.th32ThreadID);
 
-                                    let is_curr_launcher = launcher_pids.contains(&te.th32OwnerProcessID);
-                                    let tag = if is_curr_launcher { "[Launcher]" } else { "[Target App]" };
+                                    let is_curr_launcher =
+                                        launcher_pids.contains(&te.th32OwnerProcessID);
+                                    let tag = if is_curr_launcher {
+                                        "[Launcher]"
+                                    } else {
+                                        "[Target App]"
+                                    };
 
                                     let mut evt = TraceEvent::new(
                                         event_id,
@@ -410,7 +467,11 @@ fn find_handoff_process(
                 let pe_id = pe.th32ProcessID;
                 if pe_id != launcher_pid && !monitored_pids.contains(&pe_id) {
                     let exe_name = String::from_utf16_lossy(
-                        &pe.szExeFile[..pe.szExeFile.iter().position(|&c| c == 0).unwrap_or(pe.szExeFile.len())],
+                        &pe.szExeFile[..pe
+                            .szExeFile
+                            .iter()
+                            .position(|&c| c == 0)
+                            .unwrap_or(pe.szExeFile.len())],
                     );
                     let lower = exe_name.to_lowercase();
                     if lower.contains(clean_target) {
@@ -428,4 +489,3 @@ fn find_handoff_process(
         matches.into_iter().max_by_key(|(pid, _)| *pid)
     }
 }
-

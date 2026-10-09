@@ -16,10 +16,18 @@ fn test_event_throughput_and_latency() {
             i,
             1234,
             1,
-            if i % 2 == 0 { EventCategory::FileSystem } else { EventCategory::Registry },
+            if i % 2 == 0 {
+                EventCategory::FileSystem
+            } else {
+                EventCategory::Registry
+            },
             "NtCreateFile",
             "\\Device\\HarddiskVolume3\\Windows\\System32\\kernel32.dll",
-            if i % 10 == 0 { "STATUS_ACCESS_DENIED" } else { "STATUS_SUCCESS" },
+            if i % 10 == 0 {
+                "STATUS_ACCESS_DENIED"
+            } else {
+                "STATUS_SUCCESS"
+            },
             i % 10 == 0,
         ));
     }
@@ -44,7 +52,9 @@ fn test_event_throughput_and_latency() {
 
     println!(
         "[PERF] Filtered {} events (failures only): {:.2?} (Found: {})",
-        count, duration_filter, filtered.len()
+        count,
+        duration_filter,
+        filtered.len()
     );
 
     // Verify functional correctness of filtering logic

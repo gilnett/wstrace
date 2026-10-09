@@ -102,7 +102,8 @@ mod tests {
 
         // Verify arguments can also be passed directly without '--'
         let args_direct = vec!["wstrace", "run", "cmd.exe", "/c", "dir"];
-        let parsed_direct = Cli::try_parse_from(args_direct).expect("Direct args parsing must succeed");
+        let parsed_direct =
+            Cli::try_parse_from(args_direct).expect("Direct args parsing must succeed");
         match parsed_direct.command {
             Commands::Run { command, args } => {
                 assert_eq!(command, "cmd.exe");
@@ -114,7 +115,9 @@ mod tests {
 
     #[test]
     fn test_cli_parse_attach_pid() {
-        let args = vec!["wstrace", "-m", "stream", "-f", "-C", "attach", "-p", "1234"];
+        let args = vec![
+            "wstrace", "-m", "stream", "-f", "-C", "attach", "-p", "1234",
+        ];
         let parsed = Cli::try_parse_from(args).expect("CLI parsing must succeed");
 
         assert_eq!(parsed.mode, OutputMode::Stream);

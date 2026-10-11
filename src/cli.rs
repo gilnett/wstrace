@@ -19,6 +19,9 @@ use clap::{Parser, Subcommand, ValueEnum};
   # Stream file system events directly to terminal stdout\n\
   wstrace -m stream -c file run myapp.exe\n\
 \n\
+  # Stream events directly to file in NDJSON format\n\
+  wstrace -m stream -o trace.ndjson run myapp.exe\n\
+\n\
   # Trace an application and record failures only\n\
   wstrace -f run myapp.exe\n\
 \n\
@@ -73,6 +76,14 @@ pub struct Cli {
     /// Export session events to JSON file upon exit
     #[arg(long)]
     pub export_json: Option<String>,
+
+    /// Stream events directly to file in line-delimited NDJSON format
+    #[arg(short = 'o', long = "output")]
+    pub output: Option<String>,
+
+    /// Maximum in-memory event buffer capacity for TUI ring buffer
+    #[arg(long = "buffer-size", default_value_t = 50_000)]
+    pub buffer_size: usize,
 
     /// Copy all captured events to Windows clipboard upon exit
     #[arg(long = "copy", alias = "to-clipboard")]
@@ -255,5 +266,26 @@ mod tests {
         assert_eq!(parsed.mode, OutputMode::Stream);
         assert!(parsed.only_failures);
         assert_eq!(parsed.command, Commands::All);
+        assert_eq!(parsed.buffer_size, 50_000);
+        assert_eq!(parsed.output, None);
+    }
+
+    #[test]
+    fn test_cli_parse_buffer_size_and_output_flags() {
+        let args = vec![
+            "wstrace",
+            "-m",
+            "stream",
+            "-o",
+            "trace.ndjson",
+            "--buffer-size",
+            "20000",
+            "all",
+        ];
+        let parsed = Cli::try_parse_from(args).expect("CLI parsing must succeed");
+
+        assert_eq!(parsed.mode, OutputMode::Stream);
+        assert_eq!(parsed.output, Some("trace.ndjson".to_string()));
+        assert_eq!(parsed.buffer_size, 20_000);
     }
 }

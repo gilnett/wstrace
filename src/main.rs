@@ -1,5 +1,7 @@
 // wstrace - Main Application Entry Point
 
+#![deny(unused)]
+
 mod capture;
 mod cli;
 mod event;
@@ -76,6 +78,7 @@ fn main() -> Result<()> {
                 args.only_failures,
                 args.include_pattern.clone(),
                 args.exclude_pattern.clone(),
+                args.buffer_size,
             );
             tui::run_tui(app, event_rx).unwrap_or_else(|e| {
                 eprintln!("[ERROR] TUI error: {:?}", e);

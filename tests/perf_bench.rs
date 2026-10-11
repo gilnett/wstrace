@@ -40,7 +40,7 @@ fn test_event_throughput_and_latency() {
     );
 
     // 2. Real-time TUI filter benchmark
-    let mut app = App::new(1234, "process.exe".to_string(), false, None, None);
+    let mut app = App::new(1234, "process.exe".to_string(), false, None, None, 50_000);
     for ev in events {
         app.push_event(ev);
     }

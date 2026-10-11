@@ -89,7 +89,7 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         ""
     };
 
-    let header_line = Line::from(vec![
+    let mut header_spans = vec![
         Span::styled(
             " wstrace ",
             Style::default()
@@ -110,7 +110,19 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         )),
         status_badge,
         filter_badge,
-    ]);
+    ];
+
+    if app.dropped_events > 0 {
+        header_spans.push(Span::styled(
+            format!(" [DROP: {}] ", app.dropped_events),
+            Style::default()
+                .bg(Color::Red)
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ));
+    }
+
+    let header_line = Line::from(header_spans);
 
     let block = Block::default()
         .borders(Borders::ALL)

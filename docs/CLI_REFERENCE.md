@@ -86,6 +86,8 @@ wstrace -f all
 | `-c <CAT>` | `--category` | Monitored event category: `file`, `reg`, `net`, `proc`, `mem`, or `all`. Default: `all`. |
 | `-d <SEC>` | `--duration` | Maximum tracing duration in seconds. |
 | | `--export-json <FILE>` | Export captured events to formatted JSON upon exit. |
+| `-o <PATH>` | `--output <PATH>` | Stream events directly to file in line-delimited NDJSON format. |
+| | `--buffer-size <N>` | Maximum in-memory event buffer capacity for TUI ring buffer (default: `50000`). |
 | | `--copy` | Automatically copy all captured events to clipboard upon exit. |
 | `-h` | `--help` | Print help information. |
 | `-V` | `--version` | Print version information. |

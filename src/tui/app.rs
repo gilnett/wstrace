@@ -1,11 +1,15 @@
 // wstrace - TUI Application State & Event Filtering Engine
 
+use std::collections::VecDeque;
+
 use crate::event::{EventCategory, TraceEvent};
 
 pub struct App {
     pub target_pid: u32,
     pub target_name: String,
-    pub events: Vec<TraceEvent>,
+    pub events: VecDeque<TraceEvent>,
+    pub max_buffer_size: usize,
+    pub dropped_events: usize,
     pub selected_index: usize,
     pub is_paused: bool,
     pub search_query: String,
@@ -27,11 +31,15 @@ impl App {
         only_failures: bool,
         include_pattern: Option<String>,
         exclude_pattern: Option<String>,
+        buffer_size: usize,
     ) -> Self {
+        let max_buffer_size = buffer_size.max(1);
         Self {
             target_pid,
             target_name,
-            events: Vec::with_capacity(50_000),
+            events: VecDeque::with_capacity(max_buffer_size),
+            max_buffer_size,
+            dropped_events: 0,
             selected_index: 0,
             is_paused: false,
             search_query: String::new(),
@@ -69,7 +77,14 @@ impl App {
         }
 
         if !self.is_paused {
-            self.events.push(event);
+            if self.events.len() >= self.max_buffer_size {
+                self.events.pop_front();
+                self.dropped_events += 1;
+                if self.selected_index > 0 {
+                    self.selected_index -= 1;
+                }
+            }
+            self.events.push_back(event);
             if self.events.len() > 1 && self.selected_index == self.events.len() - 2 {
                 self.selected_index = self.events.len() - 1;
             }
@@ -158,6 +173,7 @@ impl App {
 
     pub fn clear_events(&mut self) {
         self.events.clear();
+        self.dropped_events = 0;
         self.selected_index = 0;
         self.status_message = Some("[CLEARED] Event buffer emptied (Ctrl+X)".to_string());
     }
@@ -233,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_failure_filtering_invariant() {
-        let mut app = App::new(100, "process.exe".to_string(), false, None, None);
+        let mut app = App::new(100, "process.exe".to_string(), false, None, None, 50_000);
         app.push_event(TraceEvent::new(
             1,
             100,
@@ -272,6 +288,7 @@ mod tests {
             false,
             Some("Roaming".to_string()),
             Some("Cache".to_string()),
+            50_000,
         );
 
         app.push_event(TraceEvent::new(
@@ -312,7 +329,7 @@ mod tests {
 
     #[test]
     fn test_category_state_machine_transition() {
-        let mut app = App::new(100, "process.exe".to_string(), false, None, None);
+        let mut app = App::new(100, "process.exe".to_string(), false, None, None, 50_000);
         assert_eq!(app.filter_category, None);
 
         app.cycle_category();
@@ -333,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_pause_buffer_isolation() {
-        let mut app = App::new(100, "process.exe".to_string(), false, None, None);
+        let mut app = App::new(100, "process.exe".to_string(), false, None, None, 50_000);
         app.push_event(TraceEvent::new(
             1,
             100,
@@ -381,7 +398,7 @@ mod tests {
 
     #[test]
     fn test_clear_events_invariant() {
-        let mut app = App::new(100, "process.exe".to_string(), false, None, None);
+        let mut app = App::new(100, "process.exe".to_string(), false, None, None, 50_000);
         app.push_event(TraceEvent::new(
             1,
             100,
@@ -406,6 +423,7 @@ mod tests {
 
         app.clear_events();
         assert_eq!(app.events.len(), 0);
+        assert_eq!(app.dropped_events, 0);
         assert_eq!(app.selected_index, 0);
         assert!(app.selected_event().is_none());
         assert!(app.status_message.as_ref().unwrap().contains("CLEARED"));
@@ -413,7 +431,7 @@ mod tests {
 
     #[test]
     fn test_selected_event_and_copy_behavior() {
-        let mut app = App::new(100, "process.exe".to_string(), false, None, None);
+        let mut app = App::new(100, "process.exe".to_string(), false, None, None, 50_000);
         // Empty state
         assert!(!app.copy_selected_to_clipboard());
         assert!(app.status_message.as_ref().unwrap().contains("EMPTY"));
@@ -445,7 +463,7 @@ mod tests {
 
     #[test]
     fn test_copy_all_to_clipboard_behavior() {
-        let mut app = App::new(100, "process.exe".to_string(), false, None, None);
+        let mut app = App::new(100, "process.exe".to_string(), false, None, None, 50_000);
         // Empty state
         assert!(!app.copy_all_to_clipboard());
         assert!(app.status_message.as_ref().unwrap().contains("EMPTY"));
@@ -480,7 +498,7 @@ mod tests {
 
     #[test]
     fn test_process_exit_event_handling() {
-        let mut app = App::new(20504, "notepad.exe".to_string(), false, None, None);
+        let mut app = App::new(20504, "notepad.exe".to_string(), false, None, None, 50_000);
         assert!(!app.is_terminated);
 
         let mut exit_evt = TraceEvent::new(
@@ -511,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_launcher_handoff_and_exit_handling() {
-        let mut app = App::new(1000, "notepad.exe".to_string(), false, None, None);
+        let mut app = App::new(1000, "notepad.exe".to_string(), false, None, None, 50_000);
         assert!(!app.is_terminated);
 
         // 1. LauncherExit for PID 1000 must NOT terminate the app session
@@ -560,5 +578,31 @@ mod tests {
         exit_evt.details = "Exit Code: 0 (0x0)".to_string();
         app.push_event(exit_evt);
         assert!(app.is_terminated);
+    }
+
+    #[test]
+    fn test_bounded_ring_buffer_eviction_and_drop_counter() {
+        let mut app = App::new(100, "process.exe".to_string(), false, None, None, 3);
+        assert_eq!(app.max_buffer_size, 3);
+        assert_eq!(app.dropped_events, 0);
+
+        for i in 1..=5 {
+            app.push_event(TraceEvent::new(
+                i,
+                100,
+                1,
+                EventCategory::FileSystem,
+                "NtOpenFile",
+                format!("C:\\file{}.txt", i),
+                "STATUS_SUCCESS",
+                false,
+            ));
+        }
+
+        assert_eq!(app.events.len(), 3);
+        assert_eq!(app.dropped_events, 2);
+        assert_eq!(app.events[0].target, "C:\\file3.txt");
+        assert_eq!(app.events[1].target, "C:\\file4.txt");
+        assert_eq!(app.events[2].target, "C:\\file5.txt");
     }
 }

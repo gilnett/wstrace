@@ -70,3 +70,27 @@ fn test_output_json_integration() {
 
     let _ = std::fs::remove_file(temp_file);
 }
+
+#[test]
+fn test_cli_integration_buffer_size_and_output() {
+    let args = vec![
+        "wstrace",
+        "--buffer-size",
+        "10000",
+        "-o",
+        "stream.ndjson",
+        "run",
+        "myapp.exe",
+    ];
+    let parsed = Cli::try_parse_from(args).expect("CLI parsing failed");
+
+    assert_eq!(parsed.buffer_size, 10_000);
+    assert_eq!(parsed.output, Some("stream.ndjson".to_string()));
+    match parsed.command {
+        Commands::Run { command, args } => {
+            assert_eq!(command, "myapp.exe");
+            assert!(args.is_empty());
+        }
+        _ => panic!("Expected Commands::Run"),
+    }
+}

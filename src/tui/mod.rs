@@ -38,7 +38,7 @@ pub fn run_tui(mut app: App, rx: Receiver<TraceEvent>) -> Result<Vec<TraceEvent>
     terminal.show_cursor()?;
 
     res?;
-    Ok(app.events)
+    Ok(app.events.into_iter().collect())
 }
 
 fn run_loop(

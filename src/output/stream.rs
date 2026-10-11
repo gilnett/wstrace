@@ -1,6 +1,7 @@
 // wstrace - Live Stdout Stream Formatter & Engine
 
-use std::io::Write;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -14,6 +15,20 @@ use crate::event::TraceEvent;
 pub fn run_stream(event_rx: Receiver<TraceEvent>, args: &Cli, target_pid: u32) -> Vec<TraceEvent> {
     println!("--- LIVE STREAM TRACING (strace mode) ---");
     let running = Arc::new(AtomicBool::new(true));
+
+    let mut file_writer: Option<BufWriter<File>> =
+        args.output
+            .as_ref()
+            .and_then(|path| match File::create(path) {
+                Ok(f) => {
+                    println!("[INFO] Streaming NDJSON events to: '{}'", path);
+                    Some(BufWriter::new(f))
+                }
+                Err(e) => {
+                    eprintln!("[ERROR] Failed to create output file '{}': {}", path, e);
+                    None
+                }
+            });
 
     let timeout = args
         .duration
@@ -81,6 +96,15 @@ pub fn run_stream(event_rx: Receiver<TraceEvent>, args: &Cli, target_pid: u32) -
                     running.store(false, Ordering::Relaxed);
                     break;
                 }
+
+                if let Some(ref mut writer) = file_writer {
+                    if let Err(e) = serde_json::to_writer(&mut *writer, &ev) {
+                        eprintln!("[ERROR] Failed to write NDJSON event: {}", e);
+                    } else {
+                        let _ = writer.write_all(b"\n");
+                    }
+                }
+
                 collected_events.push(ev);
             }
 
@@ -93,5 +117,80 @@ pub fn run_stream(event_rx: Receiver<TraceEvent>, args: &Cli, target_pid: u32) -
         thread::sleep(Duration::from_millis(50));
     }
 
+    if let Some(ref mut writer) = file_writer {
+        let _ = writer.flush();
+    }
+
     collected_events
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::{Commands, OutputMode};
+    use crate::event::EventCategory;
+    use crossbeam_channel::unbounded;
+    use std::io::BufRead;
+
+    #[test]
+    fn test_stream_ndjson_file_output() {
+        let temp_dir = std::env::temp_dir();
+        let temp_file = temp_dir.join("wstrace_test_stream.ndjson");
+        let temp_file_str = temp_file.to_string_lossy().to_string();
+
+        let (tx, rx) = unbounded::<TraceEvent>();
+
+        let args = Cli {
+            command: Commands::All,
+            mode: OutputMode::Stream,
+            only_failures: false,
+            track_children: false,
+            include_pattern: None,
+            exclude_pattern: None,
+            category: "all".to_string(),
+            duration: Some(1),
+            export_json: None,
+            output: Some(temp_file_str.clone()),
+            buffer_size: 50_000,
+            to_clipboard: false,
+        };
+
+        let ev1 = TraceEvent::new(
+            1,
+            1234,
+            1,
+            EventCategory::FileSystem,
+            "NtOpenFile",
+            "C:\\test1.txt",
+            "STATUS_SUCCESS",
+            false,
+        );
+        let ev2 = TraceEvent::new(
+            2,
+            1234,
+            1,
+            EventCategory::Registry,
+            "RegOpenKey",
+            "HKLM\\Software",
+            "STATUS_SUCCESS",
+            false,
+        );
+
+        tx.send(ev1).unwrap();
+        tx.send(ev2).unwrap();
+
+        let collected = run_stream(rx, &args, 1234);
+        assert_eq!(collected.len(), 2);
+
+        // Verify NDJSON file exists and has 2 lines
+        assert!(temp_file.exists());
+        let file = File::open(&temp_file).expect("Failed to open NDJSON file");
+        let reader = std::io::BufReader::new(file);
+        let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].contains("NtOpenFile"));
+        assert!(lines[1].contains("RegOpenKey"));
+
+        let _ = std::fs::remove_file(temp_file);
+    }
 }

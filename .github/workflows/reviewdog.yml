@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install Rust Toolchain & Clippy
         uses: dtolnay/rust-toolchain@stable
@@ -32,4 +34,4 @@ jobs:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          cargo clippy --all-targets --message-format=json | reviewdog -f=clippy -reporter=github-pr-review -filter-mode=diff_context -level=warning -fail-on-error=false
+          cargo clippy -q --all-targets --message-format=short | reviewdog -f=clippy -reporter=github-pr-review -filter-mode=diff_context -level=warning -fail-on-error=false

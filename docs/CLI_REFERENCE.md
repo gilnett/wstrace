@@ -39,7 +39,7 @@ wstrace -C run parent_script.exe
 Attaches monitoring to an already running target process without restarting it.
 
 ```text
-wstrace attach [-p <PID>] [-n <NAME>]
+wstrace attach (-p <PID> | -n <NAME>)
 ```
 
 **Examples:**

@@ -641,6 +641,7 @@ impl Win32Probe {
 
                 for (dead_pid, name) in dead_pids {
                     known_processes.remove(&dead_pid);
+                    known_modules.retain(|(p, _)| *p != dead_pid);
 
                     let mut evt = TraceEvent::new(
                         event_id,

@@ -94,7 +94,12 @@ fn main() -> Result<()> {
 
     // Export JSON if requested
     if let Some(json_path) = &args.export_json {
-        let _ = output::export_json(json_path, &collected_events);
+        if let Err(e) = output::export_json(json_path, &collected_events) {
+            eprintln!(
+                "[ERROR] Failed to export JSON trace to '{}': {:?}",
+                json_path, e
+            );
+        }
     }
 
     // Export to Windows clipboard if requested

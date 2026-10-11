@@ -68,8 +68,8 @@ jobs:
             ];
             const prompt = promptParts.join("\n");
 
-            // 2. Call Gemini API with retries and fallback
-            const models = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+            // 2. Call Gemini API with retries and fallback (current Gemini 3.x Flash models)
+            const models = ['gemini-3.8-flash', 'gemini-3.5-flash'];
             let reviewText = null;
             let usedModel = null;
 

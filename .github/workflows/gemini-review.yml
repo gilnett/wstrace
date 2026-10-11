@@ -2,7 +2,7 @@ name: Gemini AI PR Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [ main ]
 
 permissions:
@@ -14,7 +14,7 @@ jobs:
   gemini-review:
     name: Gemini Automated Code Review
     runs-on: ubuntu-latest
-    if: github.repository == 'gilnett/wstrace'
+    if: github.repository == 'gilnett/wstrace' && !github.event.pull_request.draft
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -23,6 +23,7 @@ jobs:
           persist-credentials: false
 
       - name: Generate PR Review with Gemini
+        continue-on-error: true
         uses: actions/github-script@v7
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -47,7 +48,19 @@ jobs:
               return;
             }
 
-            const truncatedDiff = diff.slice(0, 80000);
+            // Filter out noise files (lockfiles, assets) to save tokens and focus on code
+            const cleanedDiff = diff
+              .split(/^diff --git /m)
+              .filter(chunk => {
+                if (!chunk) return false;
+                const headerLine = chunk.split('\n')[0] || '';
+                return !headerLine.includes('Cargo.lock') && !headerLine.includes('.svg') && !headerLine.includes('.zip');
+              })
+              .map(chunk => 'diff --git ' + chunk)
+              .join('');
+
+            const diffToReview = (cleanedDiff && cleanedDiff.length > 0) ? cleanedDiff : diff;
+            const truncatedDiff = diffToReview.slice(0, 60000);
 
             const promptParts = [
               "You are an expert Rust systems programmer reviewing a Pull Request for 'wstrace' (a Windows system, Win32 API, and Process Monitor CLI written in native Rust).",

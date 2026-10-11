@@ -10,7 +10,8 @@
 
 [CmdletBinding()]
 param(
-    [string]$Target = "x86_64-pc-windows-msvc"
+    [string]$Target = "x86_64-pc-windows-msvc",
+    [switch]$UpdateManifests
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,6 +58,27 @@ Remove-Item -Path $stagingDir -Recurse -Force
 
 # 4. Compute Hash
 $hash = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
+
+if ($UpdateManifests) {
+    Write-Host "--> Synchronizing packaging manifests with SHA-256 hash..." -ForegroundColor White
+    $scoopPath = Join-Path $Root "packaging\scoop\wstrace.json"
+    if (Test-Path $scoopPath) {
+        $scoopJson = Get-Content $scoopPath -Raw | ConvertFrom-Json
+        $scoopJson.version = $version
+        $scoopJson.architecture.'64bit'.hash = $hash
+        $scoopJson.architecture.'64bit'.url = "https://github.com/gilnett/wstrace/releases/download/v$version/wstrace-v$version-windows-x86_64.zip"
+        $scoopJson | ConvertTo-Json -Depth 5 | Set-Content $scoopPath -Encoding utf8
+    }
+
+    $wingetPath = Join-Path $Root "packaging\winget\wstrace.yaml"
+    if (Test-Path $wingetPath) {
+        $wingetRaw = Get-Content $wingetPath -Raw
+        $wingetRaw = $wingetRaw -replace '(?m)^PackageVersion:\s*\S+', "PackageVersion: $version"
+        $wingetRaw = $wingetRaw -replace '(?m)^(\s*InstallerSha256:\s*)\S+', "`${1}$hash"
+        $wingetRaw = $wingetRaw -replace '(?m)^(\s*InstallerUrl:\s*)\S+', "`${1}https://github.com/gilnett/wstrace/releases/download/v$version/wstrace-v$version-windows-x86_64.zip"
+        Set-Content -Path $wingetPath -Value $wingetRaw -Encoding utf8
+    }
+}
 
 Write-Host "`n========================================================" -ForegroundColor Green
 Write-Host " RELEASE ARTIFACT CREATED" -ForegroundColor Green

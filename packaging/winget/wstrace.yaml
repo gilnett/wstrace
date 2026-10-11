@@ -22,6 +22,7 @@ Installers:
         PortableCommandAlias: wstrace
     InstallerType: zip
     InstallerUrl: https://github.com/gilnett/wstrace/releases/download/v0.2.1/wstrace-v0.2.1-windows-x86_64.zip
-    InstallerSha256: 982ca68a86a0d56f4592e82a5bdb7004b598db4c75dc6a39335d66b18fa87977
+    InstallerSha256: 9fdccc816ba2271c8df93d8b4b5ad9fbda284c163060c12ba238ad5183b157f2
 ManifestType: singleton
 ManifestVersion: 1.6.0
+

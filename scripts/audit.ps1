@@ -144,6 +144,7 @@ if ($cargoContent -match '(?m)^version\s*=\s*"([^"]+)"') {
 
 # Validate Scoop JSON
 $scoopPath = Join-Path $Root "packaging\scoop\wstrace.json"
+$scoopHash = $null
 if (Test-Path $scoopPath) {
     try {
         $scoopJson = Get-Content $scoopPath -Raw | ConvertFrom-Json
@@ -153,6 +154,12 @@ if (Test-Path $scoopPath) {
             Report-Failure "Scoop version ($($scoopJson.version)) does not match Cargo.toml ($cargoVersion)."
         } else {
             Report-Success "Scoop manifest valid (version: $($scoopJson.version))."
+        }
+        $scoopHash = $scoopJson.architecture.'64bit'.hash
+        if ($scoopHash -match '^[a-fA-F0-9]{64}$') {
+            Report-Success "Scoop SHA-256 checksum format valid ($($scoopHash.Substring(0, 8))...)."
+        } else {
+            Report-Failure "Scoop SHA-256 checksum is invalid or missing: '$scoopHash'"
         }
     } catch {
         Report-Failure "Scoop manifest is not valid JSON: $_"
@@ -167,6 +174,7 @@ if (Test-Path $wingetPath) {
     $wingetContent = Get-Content $wingetPath -Raw
     $wingetVerMatch = [regex]::Match($wingetContent, '(?m)^PackageVersion:\s*(\S+)')
     $wingetLocaleMatch = [regex]::Match($wingetContent, '(?m)^PackageLocale:\s*(\S+)')
+    $wingetShaMatch = [regex]::Match($wingetContent, '(?m)^\s*InstallerSha256:\s*([a-fA-F0-9]{64})')
     
     if (-not $wingetVerMatch.Success) {
         Report-Failure "Winget manifest missing 'PackageVersion'."
@@ -180,6 +188,18 @@ if (Test-Path $wingetPath) {
         Report-Failure "Winget manifest missing mandatory 'PackageLocale'."
     } else {
         Report-Success "Winget mandatory PackageLocale present ($($wingetLocaleMatch.Groups[1].Value))."
+    }
+
+    if ($wingetShaMatch.Success) {
+        $wingetHash = $wingetShaMatch.Groups[1].Value
+        Report-Success "Winget InstallerSha256 format valid ($($wingetHash.Substring(0, 8))...)."
+        if ($scoopHash -and ($scoopHash.ToLower() -ne $wingetHash.ToLower())) {
+            Report-Failure "Scoop hash ($scoopHash) does not match Winget hash ($wingetHash)."
+        } else {
+            Report-Success "Scoop and Winget SHA-256 checksums are synchronized."
+        }
+    } else {
+        Report-Failure "Winget manifest missing valid 64-char InstallerSha256."
     }
 
     # Run winget validate if winget CLI is present

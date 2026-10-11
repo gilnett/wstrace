@@ -1,5 +1,6 @@
 // wstrace - Live Stdout Stream Formatter & Engine
 
+use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,7 +35,8 @@ pub fn run_stream(event_rx: Receiver<TraceEvent>, args: &Cli, target_pid: u32) -
         .duration
         .map(|d| std::time::Instant::now() + Duration::from_secs(d));
     let mut active_pid = target_pid;
-    let mut collected_events = Vec::new();
+    let max_buffer = args.buffer_size;
+    let mut collected_events: VecDeque<TraceEvent> = VecDeque::with_capacity(max_buffer.min(1000));
 
     while running.load(Ordering::Relaxed) {
         if let Some(deadline) = timeout {
@@ -105,7 +107,10 @@ pub fn run_stream(event_rx: Receiver<TraceEvent>, args: &Cli, target_pid: u32) -
                     }
                 }
 
-                collected_events.push(ev);
+                if collected_events.len() >= max_buffer {
+                    collected_events.pop_front();
+                }
+                collected_events.push_back(ev);
             }
 
             if is_exit {
@@ -121,7 +126,7 @@ pub fn run_stream(event_rx: Receiver<TraceEvent>, args: &Cli, target_pid: u32) -
         let _ = writer.flush();
     }
 
-    collected_events
+    collected_events.into_iter().collect()
 }
 
 #[cfg(test)]
@@ -192,5 +197,44 @@ mod tests {
         assert!(lines[1].contains("RegOpenKey"));
 
         let _ = std::fs::remove_file(temp_file);
+    }
+
+    #[test]
+    fn test_stream_bounded_buffer_retention() {
+        let (tx, rx) = unbounded::<TraceEvent>();
+
+        let args = Cli {
+            command: Commands::All,
+            mode: OutputMode::Stream,
+            only_failures: false,
+            track_children: false,
+            include_pattern: None,
+            exclude_pattern: None,
+            category: "all".to_string(),
+            duration: Some(1),
+            export_json: None,
+            output: None,
+            buffer_size: 2, // bounded to 2
+            to_clipboard: false,
+        };
+
+        for i in 1..=5 {
+            tx.send(TraceEvent::new(
+                i,
+                100,
+                1,
+                EventCategory::Process,
+                "ProcessCreate",
+                format!("target_{}", i),
+                "STATUS_SUCCESS",
+                false,
+            ))
+            .unwrap();
+        }
+
+        let collected = run_stream(rx, &args, 100);
+        assert_eq!(collected.len(), 2);
+        assert_eq!(collected[0].target, "target_4");
+        assert_eq!(collected[1].target, "target_5");
     }
 }

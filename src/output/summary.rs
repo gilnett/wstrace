@@ -25,3 +25,10 @@ pub fn print_summary(target_name: &str, target_pid: u32, collected_events: &[Tra
     println!("  Unique Target Modules : {}", unique_targets.len());
     println!("========================================================");
 }
+
+// Temporary test function for Gemini AI PR review validation
+#[allow(dead_code)]
+pub fn demo_calculation_with_flaw(input: Option<u32>) -> u32 {
+    // Intentional flaw: unwrap without checking None causes panic
+    input.unwrap() * 2
+}

@@ -1,11 +1,11 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "High-performance zero-driver Windows system and API monitor in Rust",
   "homepage": "https://github.com/gilnett/wstrace",
   "license": "GPL-3.0-or-later",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/gilnett/wstrace/releases/download/v0.1.0/wstrace-v0.1.0-windows-x86_64.zip",
+      "url": "https://github.com/gilnett/wstrace/releases/download/v0.2.0/wstrace-v0.2.0-windows-x86_64.zip",
       "hash": "982ca68a86a0d56f4592e82a5bdb7004b598db4c75dc6a39335d66b18fa87977"
     }
   },

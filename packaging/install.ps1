@@ -18,10 +18,10 @@ Write-Host "[INFO] Starting wstrace installation..." -ForegroundColor Cyan
 
 $candidates = @(
     $SourceExe,
-    "$HOME\.cargo\bin\wstrace.exe",
     "$PSScriptRoot\..\target\release\wstrace.exe",
     "$PSScriptRoot\target\release\wstrace.exe",
     ".\target\release\wstrace.exe",
+    "$HOME\.cargo\bin\wstrace.exe",
     "$PSScriptRoot\..\target\debug\wstrace.exe",
     ".\target\debug\wstrace.exe"
 )

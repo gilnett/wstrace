@@ -62,7 +62,8 @@ impl App {
             ));
         }
 
-        if event.operation == "ProcessExit" && event.pid == self.target_pid {
+        if event.operation == "ProcessExit" && self.target_pid != 0 && event.pid == self.target_pid
+        {
             self.is_terminated = true;
             self.status_message = Some(format!("[PROCESS EXITED] {}", event.details));
         }

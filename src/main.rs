@@ -3,14 +3,10 @@
 mod capture;
 mod cli;
 mod event;
+mod output;
 mod tui;
 
-use std::fs::File;
 use std::process;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -50,10 +46,15 @@ fn main() -> Result<()> {
                 process::exit(1);
             }
         }
+        Commands::All => (0, "SYSTEM-WIDE".to_string()),
     };
 
     if args.mode == OutputMode::Stream {
-        println!("[INFO] Monitoring '{}' (PID: {})", target_name, target_pid);
+        if target_pid == 0 {
+            println!("[INFO] Monitoring all system processes (System-wide trace)");
+        } else {
+            println!("[INFO] Monitoring '{}' (PID: {})", target_name, target_pid);
+        }
     }
 
     // High-performance unbounded event bus
@@ -67,9 +68,7 @@ fn main() -> Result<()> {
     let etw = EtwConsumer::new(target_pid);
     etw.start(event_tx.clone());
 
-    let mut collected_events = Vec::new();
-
-    match args.mode {
+    let collected_events = match args.mode {
         OutputMode::Tui => {
             let app = App::new(
                 target_pid,
@@ -78,119 +77,24 @@ fn main() -> Result<()> {
                 args.include_pattern.clone(),
                 args.exclude_pattern.clone(),
             );
-            match tui::run_tui(app, event_rx) {
-                Ok(events) => collected_events = events,
-                Err(e) => eprintln!("[ERROR] TUI error: {:?}", e),
-            }
+            tui::run_tui(app, event_rx).unwrap_or_else(|e| {
+                eprintln!("[ERROR] TUI error: {:?}", e);
+                Vec::new()
+            })
         }
-        OutputMode::Stream => {
-            println!("--- LIVE STREAM TRACING (strace mode) ---");
-            let running = Arc::new(AtomicBool::new(true));
-            let r_clone = Arc::clone(&running);
-
-            ctrlc_handler(r_clone);
-
-            let timeout = args
-                .duration
-                .map(|d| std::time::Instant::now() + Duration::from_secs(d));
-            let mut active_pid = target_pid;
-
-            while running.load(Ordering::Relaxed) {
-                if let Some(deadline) = timeout {
-                    if std::time::Instant::now() >= deadline {
-                        break;
-                    }
-                }
-
-                while let Ok(ev) = event_rx.try_recv() {
-                    if args.only_failures && !ev.is_failure {
-                        continue;
-                    }
-
-                    if let Some(inc) = &args.include_pattern {
-                        if !ev.target.to_lowercase().contains(&inc.to_lowercase())
-                            && !ev.operation.to_lowercase().contains(&inc.to_lowercase())
-                        {
-                            continue;
-                        }
-                    }
-
-                    if let Some(exc) = &args.exclude_pattern {
-                        if ev.target.to_lowercase().contains(&exc.to_lowercase())
-                            || ev.operation.to_lowercase().contains(&exc.to_lowercase())
-                        {
-                            continue;
-                        }
-                    }
-
-                    let res_color = if ev.is_failure {
-                        "\x1b[91m"
-                    } else {
-                        "\x1b[92m"
-                    };
-                    use std::io::Write;
-                    let write_res = writeln!(
-                        std::io::stdout(),
-                        "[{}] [{}] {} -> {}{}\x1b[0m ({})",
-                        ev.timestamp,
-                        ev.category.as_str(),
-                        ev.operation,
-                        res_color,
-                        ev.result,
-                        ev.target
-                    );
-                    if write_res.is_err() {
-                        running.store(false, Ordering::Relaxed);
-                        break;
-                    }
-
-                    if ev.operation == "ProcessHandOff" {
-                        active_pid = ev.pid;
-                    }
-
-                    let is_exit = ev.operation == "ProcessExit" && ev.pid == active_pid;
-                    collected_events.push(ev);
-                    if is_exit {
-                        running.store(false, Ordering::Relaxed);
-                        break;
-                    }
-                }
-
-                thread::sleep(Duration::from_millis(50));
-            }
-        }
-    }
+        OutputMode::Stream => output::run_stream(event_rx, &args, target_pid),
+    };
 
     // Stop probes
     probe.stop();
     etw.stop();
 
     // Summary counters display
-    if !collected_events.is_empty() {
-        let total = collected_events.len();
-        let failures = collected_events.iter().filter(|e| e.is_failure).count();
-        let unique_targets: std::collections::HashSet<&str> =
-            collected_events.iter().map(|e| e.target.as_str()).collect();
-
-        println!("\n========================================================");
-        println!("                FINAL TRACE SUMMARY REPORT              ");
-        println!("========================================================");
-        println!(
-            "  Target Process        : {} (PID: {})",
-            target_name, target_pid
-        );
-        println!("  Captured Events       : {}", total);
-        println!("  Failures / Errors     : {}", failures);
-        println!("  Unique Target Modules : {}", unique_targets.len());
-        println!("========================================================");
-    }
+    output::print_summary(&target_name, target_pid, &collected_events);
 
     // Export JSON if requested
-    if let Some(json_path) = args.export_json {
-        if let Ok(mut f) = File::create(&json_path) {
-            let _ = serde_json::to_writer_pretty(&mut f, &collected_events);
-            println!("[OK] JSON trace report exported: {}", json_path);
-        }
+    if let Some(json_path) = &args.export_json {
+        let _ = output::export_json(json_path, &collected_events);
     }
 
     // Export to Windows clipboard if requested
@@ -256,10 +160,4 @@ fn find_pid_by_name(name: &str) -> Option<u32> {
         CloseHandle(h_snap);
     }
     None
-}
-
-fn ctrlc_handler(_running: Arc<AtomicBool>) {
-    thread::spawn(move || {
-        // Signal handler placeholder for stream mode
-    });
 }

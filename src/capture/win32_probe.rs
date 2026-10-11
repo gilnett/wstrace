@@ -1,6 +1,6 @@
 // wstrace - Real-Time Win32 Inspection Probe (Modules, Threads, Memory, Children)
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -39,6 +39,11 @@ impl Win32Probe {
     }
 
     pub fn start_monitor(&self, event_tx: Sender<TraceEvent>) {
+        if self.pid == 0 {
+            self.start_system_monitor(event_tx);
+            return;
+        }
+
         let mut root_pid = self.pid;
         let target_name = self.target_name.clone();
         let track_children = self.track_children;
@@ -434,6 +439,225 @@ impl Win32Probe {
 
             if !h_proc.is_null() {
                 unsafe { CloseHandle(h_proc) };
+            }
+        });
+    }
+
+    fn start_system_monitor(&self, event_tx: Sender<TraceEvent>) {
+        let running = Arc::clone(&self.running);
+
+        thread::spawn(move || {
+            use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+                Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+            };
+
+            let mut event_id = 1000u64;
+
+            // Initial startup event
+            let mut start_evt = TraceEvent::new(
+                event_id,
+                0,
+                0,
+                EventCategory::Process,
+                "SystemMonitorStart",
+                "SYSTEM-WIDE",
+                "STATUS_SUCCESS",
+                false,
+            );
+            start_evt.details = "System-wide trace active across all Windows processes".to_string();
+            event_id += 1;
+            let _ = event_tx.send(start_evt);
+
+            let mut known_processes: HashMap<u32, String> = HashMap::new();
+            let mut known_modules: HashSet<(u32, String)> = HashSet::new();
+
+            // Populate initial running processes
+            unsafe {
+                let h_snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+                if h_snap != INVALID_HANDLE_VALUE {
+                    let mut pe: PROCESSENTRY32W = std::mem::zeroed();
+                    pe.dwSize = size_of::<PROCESSENTRY32W>() as u32;
+
+                    if Process32FirstW(h_snap, &mut pe) != 0 {
+                        loop {
+                            let pid = pe.th32ProcessID;
+                            let exe_name = String::from_utf16_lossy(
+                                &pe.szExeFile[..pe
+                                    .szExeFile
+                                    .iter()
+                                    .position(|&c| c == 0)
+                                    .unwrap_or(pe.szExeFile.len())],
+                            );
+
+                            known_processes.insert(pid, exe_name.clone());
+
+                            if pid != 0 && pid != 4 {
+                                let mut evt = TraceEvent::new(
+                                    event_id,
+                                    pid,
+                                    0,
+                                    EventCategory::Process,
+                                    "ProcessRunning",
+                                    exe_name,
+                                    "STATUS_SUCCESS",
+                                    false,
+                                );
+                                evt.details = format!(
+                                    "Active Process (Parent PID: {})",
+                                    pe.th32ParentProcessID
+                                );
+                                event_id += 1;
+                                let _ = event_tx.send(evt);
+                            }
+
+                            if Process32NextW(h_snap, &mut pe) == 0 {
+                                break;
+                            }
+                        }
+                    }
+                    CloseHandle(h_snap);
+                }
+            }
+
+            // Real-time tracking loop
+            while running.load(Ordering::Relaxed) {
+                let mut current_pids: HashMap<u32, (String, u32)> = HashMap::new();
+
+                unsafe {
+                    let h_snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+                    if h_snap != INVALID_HANDLE_VALUE {
+                        let mut pe: PROCESSENTRY32W = std::mem::zeroed();
+                        pe.dwSize = size_of::<PROCESSENTRY32W>() as u32;
+
+                        if Process32FirstW(h_snap, &mut pe) != 0 {
+                            loop {
+                                let pid = pe.th32ProcessID;
+                                let exe_name = String::from_utf16_lossy(
+                                    &pe.szExeFile[..pe
+                                        .szExeFile
+                                        .iter()
+                                        .position(|&c| c == 0)
+                                        .unwrap_or(pe.szExeFile.len())],
+                                );
+                                current_pids.insert(pid, (exe_name, pe.th32ParentProcessID));
+
+                                if Process32NextW(h_snap, &mut pe) == 0 {
+                                    break;
+                                }
+                            }
+                        }
+                        CloseHandle(h_snap);
+                    }
+                }
+
+                // 1. Detect newly spawned processes
+                for (&pid, (exe_name, parent_pid)) in &current_pids {
+                    if let std::collections::hash_map::Entry::Vacant(e) = known_processes.entry(pid)
+                    {
+                        e.insert(exe_name.clone());
+
+                        let mut evt = TraceEvent::new(
+                            event_id,
+                            pid,
+                            0,
+                            EventCategory::Process,
+                            "ProcessSpawn",
+                            exe_name.clone(),
+                            "STATUS_SUCCESS",
+                            false,
+                        );
+                        evt.details = format!("New process spawned (Parent PID: {})", parent_pid);
+                        event_id += 1;
+                        let _ = event_tx.send(evt);
+
+                        // Capture loaded modules for the new process
+                        unsafe {
+                            let h_mod = CreateToolhelp32Snapshot(
+                                TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32,
+                                pid,
+                            );
+                            if h_mod != INVALID_HANDLE_VALUE {
+                                let mut me: MODULEENTRY32W = std::mem::zeroed();
+                                me.dwSize = size_of::<MODULEENTRY32W>() as u32;
+
+                                if Module32FirstW(h_mod, &mut me) != 0 {
+                                    loop {
+                                        let mod_name = String::from_utf16_lossy(
+                                            &me.szModule[..me
+                                                .szModule
+                                                .iter()
+                                                .position(|&c| c == 0)
+                                                .unwrap_or(me.szModule.len())],
+                                        );
+                                        let mod_path = String::from_utf16_lossy(
+                                            &me.szExePath[..me
+                                                .szExePath
+                                                .iter()
+                                                .position(|&c| c == 0)
+                                                .unwrap_or(me.szExePath.len())],
+                                        );
+
+                                        let key = (pid, mod_name);
+                                        if !known_modules.contains(&key) {
+                                            known_modules.insert(key);
+
+                                            let mut m_evt = TraceEvent::new(
+                                                event_id,
+                                                pid,
+                                                0,
+                                                EventCategory::Process,
+                                                "LoadLibraryW",
+                                                mod_path,
+                                                "STATUS_SUCCESS",
+                                                false,
+                                            );
+                                            m_evt.details = format!(
+                                                "[{}] Base: 0x{:X}, Size: {} KB",
+                                                exe_name,
+                                                me.modBaseAddr as usize,
+                                                me.modBaseSize / 1024
+                                            );
+                                            event_id += 1;
+                                            let _ = event_tx.send(m_evt);
+                                        }
+
+                                        if Module32NextW(h_mod, &mut me) == 0 {
+                                            break;
+                                        }
+                                    }
+                                }
+                                CloseHandle(h_mod);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Detect terminated processes
+                let dead_pids: Vec<(u32, String)> = known_processes
+                    .iter()
+                    .filter(|(pid, _)| !current_pids.contains_key(pid))
+                    .map(|(&pid, name)| (pid, name.clone()))
+                    .collect();
+
+                for (dead_pid, name) in dead_pids {
+                    known_processes.remove(&dead_pid);
+
+                    let mut evt = TraceEvent::new(
+                        event_id,
+                        dead_pid,
+                        0,
+                        EventCategory::Process,
+                        "ProcessExit",
+                        name,
+                        "STATUS_SUCCESS",
+                        false,
+                    );
+                    evt.details = format!("Process terminated (PID: {})", dead_pid);
+                    event_id += 1;
+                    let _ = event_tx.send(evt);
+                }
+
+                thread::sleep(Duration::from_millis(150));
             }
         });
     }

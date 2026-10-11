@@ -75,7 +75,9 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         )
     };
 
-    let target_tag = if app.events.iter().any(|e| e.operation == "ProcessHandOff") {
+    let target_tag = if app.target_pid == 0 {
+        " [System-Wide]"
+    } else if app.events.iter().any(|e| e.operation == "ProcessHandOff") {
         " [Target App]"
     } else if app
         .events

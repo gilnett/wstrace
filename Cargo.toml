@@ -1,10 +1,15 @@
 [package]
 name = "wstrace"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["gilnett"]
 license = "GPL-3.0-or-later"
 description = "High-performance zero-driver Windows system and API monitor in Rust"
+repository = "https://github.com/gilnett/wstrace"
+homepage = "https://github.com/gilnett/wstrace"
+readme = "README.md"
+keywords = ["strace", "windows", "tracing", "tui", "system"]
+categories = ["command-line-utilities", "development-tools::debugging"]
 
 
 [dependencies]

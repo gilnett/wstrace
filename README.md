@@ -60,9 +60,9 @@ The resulting standalone executable is located at `target\release\wstrace.exe`.
 
 ---
 
-## Usage Guide
+## Quickstart & Usage
 
-### Verification
+### 1. Verification
 
 Confirm that `wstrace` is accessible in the current shell:
 
@@ -70,11 +70,9 @@ Confirm that `wstrace` is accessible in the current shell:
 wstrace --version
 ```
 
----
+### 2. Trace an Application (Interactive TUI)
 
-### Interactive TUI Mode
-
-Launches the target application with a real-time event table:
+Launch a target executable with real-time Win32 and system telemetry:
 
 ```bash
 wstrace run <executable_path> [-- <arguments>...]
@@ -93,49 +91,29 @@ wstrace run <executable_path> [-- <arguments>...]
 | `Up` / `Down` | **Navigation** | Selects an event for deep inspection. |
 | `q` / `Esc` | **Exit** | Terminates the tracing session cleanly. |
 
----
+### 3. Trace All System-Wide Activity
 
-### Attach to Running Process
+Monitor active processes, new spawns, exits, and loaded modules system-wide in real time:
 
-Attach to an existing process by Process Identifier (PID) or binary name without restarting it:
+```bash
+wstrace all
+```
+
+### 4. Attach to a Running Process
+
+Attach to an existing process by PID or binary name without restarting it:
 
 ```bash
 # Attach by PID
 wstrace attach -p <PID>
 
-# Attach by process executable name
+# Attach by process name
 wstrace attach -n <process_name.exe>
 ```
 
----
+### 5. Headless Stream Mode (CI/CD & Logging)
 
-### Child Process Tracking (`-C` / `--children`)
-
-Tracks the target process and recursively monitors all child processes spawned by it:
-
-```bash
-wstrace -C run <executable_path> [-- <arguments>...]
-```
-
----
-
-### Path Filtering (`--include` and `--exclude`)
-
-Isolate relevant operations or suppress operating system noise:
-
-```bash
-# Include only operations matching a substring
-wstrace --include "<substring>" run <executable_path>
-
-# Exclude operations matching a substring
-wstrace --exclude "<substring>" run <executable_path>
-```
-
----
-
-### Headless Stream Mode (`-m stream`)
-
-Writes live events directly to stdout with ANSI color codes for logging or CI/CD pipelines:
+Writes live events directly to `stdout` with ANSI color codes:
 
 ```bash
 wstrace -m stream [-d <seconds>] run <executable_path>
@@ -143,23 +121,8 @@ wstrace -m stream [-d <seconds>] run <executable_path>
 
 ---
 
-### Structured JSON Export (`--export-json`)
-
-Exports all captured session events to a formatted JSON file upon termination:
-
-```bash
-wstrace --export-json <output_file.json> run <executable_path>
-```
-
----
-
-### Clipboard Export (`--copy` / `--to-clipboard`)
-
-Automatically copies all captured session events directly to the Windows clipboard upon exit:
-
-```bash
-wstrace --copy run <executable_path>
-```
+> 📖 **Comprehensive Manual & Advanced Options:**
+> For advanced path filtering (`--include` / `--exclude`), child tracking (`-C`), JSON reports (`--export-json`), clipboard exports (`--copy`), and scripting options, consult the **[CLI Reference Manual](docs/CLI_REFERENCE.md)** or run `wstrace --help`.
 
 ---
 

@@ -1,0 +1,35 @@
+name: Reviewdog Clippy PR Review
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  clippy-review:
+    name: Clippy Automated PR Review
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v7
+
+      - name: Install Rust Toolchain & Clippy
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Setup Reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
+      - name: Run Clippy and Post PR Reviews
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          cargo clippy --all-targets --message-format=json | reviewdog -f=clippy -reporter=github-pr-review -filter-mode=diff_context -level=warning -fail-on-error=false

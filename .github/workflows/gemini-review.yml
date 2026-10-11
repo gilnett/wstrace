@@ -64,15 +64,15 @@ jobs:
 
             const promptParts = [
               "You are an expert Rust systems programmer reviewing a Pull Request for 'wstrace' (a Windows system, Win32 API, and Process Monitor CLI written in native Rust).",
-              "Review the following git diff carefully.",
+              "Review the following git diff carefully. Focus strictly on critical bugs, memory safety, concurrency, Win32 API edge cases, and performance regressions.",
               "",
               "Structure your response with:",
-              "1. **Summary of Changes**: High-level summary of architectural and functional changes.",
+              "1. **Summary of Changes**: Concise summary of architectural and functional changes.",
               "2. **Code Quality & Rust Idioms**: Evaluation against modern Rust idioms, safety, error handling, and performance.",
-              "3. **Potential Issues / Edge Cases**: Point out any potential bugs, memory leaks, concurrency issues, or Win32 API gotchas.",
+              "3. **Potential Issues / Edge Cases**: Actionable feedback on bugs, leaks, or Win32 gotchas (or state 'None identified').",
               "4. **Verdict**: Clear recommendation (LGTM / Needs Attention).",
               "",
-              "Keep your response constructive, professional, and well-structured in GitHub Markdown.",
+              "Keep your response concise, actionable, and formatted in GitHub Markdown.",
               "",
               "GIT DIFF:",
               "```diff",
@@ -81,8 +81,15 @@ jobs:
             ];
             const prompt = promptParts.join("\n");
 
-            // 2. Call Gemini API with retries and fallback across active models
-            const models = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.0-flash'];
+            // 2. Call Gemini API with retries and fallback across active Gemini 3 generation models
+            const models = [
+              'gemini-3.8-flash',
+              'gemini-3.7-flash',
+              'gemini-3.6-flash',
+              'gemini-3.5-flash',
+              'gemini-3.5-flash-lite',
+              'gemini-3.1-flash-lite'
+            ];
             let reviewText = null;
             let usedModel = null;
 
@@ -96,7 +103,7 @@ jobs:
                     body: JSON.stringify({
                       contents: [{ parts: [{ text: prompt }] }],
                       generationConfig: {
-                        temperature: 0.2,
+                        temperature: 0.1,
                         maxOutputTokens: 2048
                       }
                     })
@@ -130,26 +137,48 @@ jobs:
               if (reviewText) break;
             }
 
+            // Find existing review comment if present (idempotent updates)
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existingReview = comments.find(c => 
+              c.body && c.body.includes('### 🤖 Gemini AI Code Review')
+            );
+
             if (!reviewText) {
-              core.warning("Unable to generate review from Gemini API (upstream 503/429 capacity spike). Review step skipped gracefully.");
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: "⚠️ *Automated AI Code Review was temporarily skipped due to an upstream Google Gemini API capacity spike (HTTP 503/429). Codebase validation and CI checks are unaffected.*"
-              });
+              core.warning("Unable to generate review from Gemini API (upstream capacity spike). Step skipped gracefully.");
+              if (!existingReview) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: "⚠️ *Automated AI Code Review was temporarily skipped due to an upstream Google Gemini API capacity spike (HTTP 503/429). Codebase validation and CI checks are unaffected.*"
+                });
+              }
               return;
             }
 
             const header = `### 🤖 Gemini AI Code Review (${usedModel})\n\n`;
             const footer = `\n\n---\n*Generated automatically by Google Gemini (${usedModel}) via GitHub Actions.*`;
+            const finalBody = header + reviewText + footer;
 
-            // 3. Post comment to PR
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: header + reviewText + footer
-            });
-
-            console.log("Successfully posted Gemini review to PR #" + context.issue.number);
+            // 3. Post or update comment on PR
+            if (existingReview) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingReview.id,
+                body: finalBody
+              });
+              console.log("Successfully updated existing Gemini review comment on PR #" + context.issue.number);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: finalBody
+              });
+              console.log("Successfully posted new Gemini review to PR #" + context.issue.number);
+            }

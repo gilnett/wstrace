@@ -2,8 +2,10 @@ name: Gemini AI PR Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened]
     branches: [ main ]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -14,14 +16,13 @@ jobs:
   gemini-review:
     name: Gemini Automated Code Review
     runs-on: ubuntu-latest
-    if: github.repository == 'gilnett/wstrace' && !github.event.pull_request.draft
+    if: >
+      github.repository == 'gilnett/wstrace' &&
+      (
+        (github.event_name == 'pull_request' && !github.event.pull_request.draft) ||
+        (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.issue.state == 'open' && contains(github.event.comment.body, '@gemini review'))
+      )
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
       - name: Generate PR Review with Gemini
         continue-on-error: true
         uses: actions/github-script@v7
@@ -35,7 +36,46 @@ jobs:
               return;
             }
 
-            // 1. Get PR Diff
+            // Acknowledge command comment with emoji reaction
+            if (context.eventName === 'issue_comment' && context.payload.comment) {
+              try {
+                await github.rest.reactions.createForIssueComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: context.payload.comment.id,
+                  content: 'eyes'
+                });
+              } catch (_) {}
+            }
+
+            // 1. Check review quota (max 3 reviews per PR)
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const previousReviews = comments.filter(c =>
+              c.body && c.body.includes('Gemini AI Code Review')
+            );
+
+            const maxReviews = 3;
+            const reviewIndex = previousReviews.length + 1;
+
+            if (reviewIndex > maxReviews) {
+              console.log(`Review quota reached (${previousReviews.length}/${maxReviews}). Skipping review.`);
+              if (context.eventName === 'issue_comment') {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `> [!NOTE]\n> **Gemini AI Review Quota Reached**: This Pull Request has already received its maximum of ${maxReviews} automated AI reviews (#${maxReviews}/${maxReviews}). Further automated reviews are disabled for this PR to conserve API resources.`
+                });
+              }
+              return;
+            }
+
+            // 2. Fetch PR Diff
             const { data: diff } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -81,7 +121,7 @@ jobs:
             ];
             const prompt = promptParts.join("\n");
 
-            // 2. Call Gemini API with retries and fallback across active Gemini 3 generation models
+            // 3. Call Gemini API with retries across active Gemini 3 generation models
             const models = [
               'gemini-3.8-flash',
               'gemini-3.7-flash',
@@ -137,48 +177,35 @@ jobs:
               if (reviewText) break;
             }
 
-            // Find existing review comment if present (idempotent updates)
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existingReview = comments.find(c => 
-              c.body && c.body.includes('### 🤖 Gemini AI Code Review')
-            );
-
             if (!reviewText) {
               core.warning("Unable to generate review from Gemini API (upstream capacity spike). Step skipped gracefully.");
-              if (!existingReview) {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: "⚠️ *Automated AI Code Review was temporarily skipped due to an upstream Google Gemini API capacity spike (HTTP 503/429). Codebase validation and CI checks are unaffected.*"
-                });
-              }
-              return;
-            }
-
-            const header = `### 🤖 Gemini AI Code Review (${usedModel})\n\n`;
-            const footer = `\n\n---\n*Generated automatically by Google Gemini (${usedModel}) via GitHub Actions.*`;
-            const finalBody = header + reviewText + footer;
-
-            // 3. Post or update comment on PR
-            if (existingReview) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existingReview.id,
-                body: finalBody
-              });
-              console.log("Successfully updated existing Gemini review comment on PR #" + context.issue.number);
-            } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: finalBody
+                body: "⚠️ *Automated AI Code Review was temporarily skipped due to an upstream Google Gemini API capacity spike (HTTP 503/429). Codebase validation and CI checks are unaffected.*"
               });
-              console.log("Successfully posted new Gemini review to PR #" + context.issue.number);
+              return;
             }
+
+            const header = `### 🤖 Gemini AI Code Review (#${reviewIndex}/${maxReviews} - ${usedModel})\n\n`;
+
+            let followUpTip = "";
+            if (reviewIndex < maxReviews) {
+              followUpTip = `\n\n> 💡 *Need another review after pushing updates? Comment \`@gemini review\` to trigger review #${reviewIndex + 1}/${maxReviews}.*`;
+            } else {
+              followUpTip = `\n\n> ℹ️ *This is the final automated AI review for this Pull Request (#${maxReviews}/${maxReviews}).*`;
+            }
+
+            const footer = `\n\n---\n*Generated automatically by Google Gemini (${usedModel}) via GitHub Actions.*` + followUpTip;
+            const finalBody = header + reviewText + footer;
+
+            // 4. Post review comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: finalBody
+            });
+
+            console.log(`Successfully posted Gemini review #${reviewIndex}/${maxReviews} to PR #${context.issue.number}`);

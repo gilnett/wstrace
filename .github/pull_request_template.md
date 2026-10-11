@@ -21,6 +21,8 @@ Describe the tests executed to verify your changes:
 - Tested command line:
 - [ ] `cargo test` passes with 0 failures
 - [ ] `cargo check --release` passes with 0 warnings
+- [ ] `.\scripts\audit.ps1` passes with 0 errors (all quality, security & manifest checks)
+- [ ] Git commit titles comply with the 72-character limit
 - [ ] No regressions observed in interactive TUI or headless stream mode
 
 ---

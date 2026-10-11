@@ -46,19 +46,26 @@ Every pull request is subject to automated security analysis:
 
 ---
 
-## 5. Submitting Pull Requests
+## 5. Submitting Pull Requests & Verification Requirements
 
-1. Fork the repository and create your branch from `main`:
-   ```bash
-   git checkout -b feature/your-feature-name
+### 5.1 Pre-Submission Local Audit
+Before submitting a PR, your branch must satisfy all local verification criteria:
+1. **Pass Comprehensive Project Audit**:
+   Execute the full automated quality, security, and packaging test suite:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/audit.ps1
    ```
-2. Ensure all unit and performance benchmarks pass:
-   ```bash
-   cargo test
-   ```
-3. Ensure formatting and clippy checks are clean:
-   ```bash
-   cargo clippy --all-targets --all-features
-   cargo fmt --check
-   ```
-4. Submit the Pull Request with a clear description of the rationale and changes.
+   All 13 checks must pass (Rust formatting, Clippy zero-warning policy, unit tests, Scoop/Winget manifest synchronization, and PowerShell script analysis).
+2. **Git Commit Standards**:
+   - Keep all Git commit titles under 72 characters (hard limit 80 characters).
+   - Use standard conventional prefixes (`feat:`, `fix:`, `ci:`, `docs:`, `refactor:`).
+   - Maintain a solo developer tone ("I", never "we") in commit bodies and messages.
+
+### 5.2 Automated AI Code Review Workflow (Google Gemini)
+- **Initial Automated Review**: An AI review (#1/3) is triggered automatically upon opening the Pull Request.
+- **On-Demand Re-Reviews**: After pushing updates or addressing comments, request a new review by posting a PR comment containing:
+  ```text
+  @gemini review
+  ```
+- **Review Quota**: Each Pull Request is allocated a maximum of **3 automated AI reviews** (#1/3, #2/3, #3/3) to conserve API resources.
+- **Review Resolution**: Contributors are expected to address or discuss any critical observations (e.g. memory leaks, Win32 edge cases, packaging checksum mismatches) identified by the AI review before merging.

@@ -92,8 +92,8 @@ fn bench_tui_filtering(bencher: Bencher) {
         ));
     }
 
+    app.filter_failures_only = true;
     bencher.bench_local(|| {
-        app.filter_failures_only = true;
         let filtered = app.filtered_events();
         black_box(filtered.len())
     });

@@ -100,7 +100,17 @@ jobs:
               .join('');
 
             const diffToReview = (cleanedDiff && cleanedDiff.length > 0) ? cleanedDiff : diff;
-            const truncatedDiff = diffToReview.slice(0, 60000);
+            let truncatedDiff = diffToReview;
+            if (diffToReview.length > 60000) {
+              const slice = diffToReview.slice(0, 60000);
+              const lastFileBoundary = slice.lastIndexOf('\ndiff --git ');
+              if (lastFileBoundary > 10000) {
+                truncatedDiff = slice.slice(0, lastFileBoundary) + "\n\n[... DIFF TRUNCATED BY WORKFLOW AT FILE BOUNDARY TO FIT TOKEN BUDGET - REMAINING FILES OMITTED ...]";
+              } else {
+                const lastLineBoundary = slice.lastIndexOf('\n');
+                truncatedDiff = slice.slice(0, lastLineBoundary) + "\n\n[... DIFF TRUNCATED BY WORKFLOW AT LINE BOUNDARY TO FIT TOKEN BUDGET ...]";
+              }
+            }
 
             const promptParts = [
               "You are an expert Rust systems programmer reviewing a Pull Request for 'wstrace' (a Windows system, Win32 API, and Process Monitor CLI written in native Rust).",

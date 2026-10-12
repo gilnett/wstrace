@@ -334,3 +334,6 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
     let paragraph = Paragraph::new(Line::from(help_spans));
     frame.render_widget(paragraph, area);
 }
+
+#[cfg(test)]
+mod tests;

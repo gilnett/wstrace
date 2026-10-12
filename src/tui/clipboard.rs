@@ -81,12 +81,4 @@ mod win32_clip {
 pub use win32_clip::set_clipboard_text;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_clipboard_invocation_safeness() {
-        // Verification test: calling clipboard function does not crash or corrupt memory
-        let _ = set_clipboard_text("wstrace-test-payload");
-    }
-}
+mod tests;

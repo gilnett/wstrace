@@ -2,22 +2,17 @@
 
 #![deny(unused)]
 
-mod capture;
-mod cli;
-mod event;
-mod output;
-mod tui;
-
 use std::process;
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use crossbeam_channel::unbounded;
 
-use capture::{spawn_target_process, EtwConsumer, Win32Probe};
-use cli::{Cli, Commands, OutputMode};
-use event::TraceEvent;
-use tui::app::App;
+use wstrace::capture::{spawn_target_process, EtwConsumer, Win32Probe};
+use wstrace::cli::{Cli, Commands, OutputMode};
+use wstrace::event::TraceEvent;
+use wstrace::output;
+use wstrace::tui::{self, app::App};
 
 fn main() -> Result<()> {
     let args = Cli::parse();

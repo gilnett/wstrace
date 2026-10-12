@@ -191,24 +191,29 @@ if ((Test-Path $cliRsPath) -and (Test-Path $cliRefPath)) {
     $cliRef = Get-Content $cliRefPath -Raw
 
     $missingDocs = @()
-    # Extract long flags
-    $longFlagMatches = [regex]::Matches($cliRs, 'long\s*=\s*"([^"]+)"')
-    foreach ($m in $longFlagMatches) {
-        $flag = $m.Groups[1].Value
+    # Extract all long flags dynamically from struct fields in src/cli.rs
+    $fieldBlocks = [regex]::Matches($cliRs, '(?s)#\[arg\(([^\]]+)\)\]\s*pub\s+([a-zA-Z0-9_]+)\s*:')
+    foreach ($fb in $fieldBlocks) {
+        $attrs = $fb.Groups[1].Value
+        $fieldName = $fb.Groups[2].Value
+        $longMatch = [regex]::Match($attrs, 'long\s*=\s*"([^"]+)"')
+        if ($longMatch.Success) {
+            $flag = $longMatch.Groups[1].Value
+        } elseif ($attrs -match '\blong\b') {
+            $flag = $fieldName.Replace('_', '-')
+        } else {
+            continue
+        }
         if ($cliRef -notmatch [regex]::Escape("--$flag")) {
             $missingDocs += "--$flag"
         }
     }
-    # Check implicit long flags from pub field definitions
-    $implicitFlags = @("mode", "category", "duration", "export-json")
-    foreach ($flag in $implicitFlags) {
-        if ($cliRef -notmatch [regex]::Escape("--$flag")) {
-            $missingDocs += "--$flag"
-        }
-    }
-    # Check subcommands
-    $subcommands = @("run", "attach", "all")
-    foreach ($sub in $subcommands) {
+
+    # Extract subcommands dynamically from Commands enum in src/cli.rs
+    $commandsSection = [regex]::Match($cliRs, '(?s)pub\s+enum\s+Commands\s*\{.*?(?=pub\s+enum\s+OutputMode)').Value
+    $variantMatches = [regex]::Matches($commandsSection, '(?m)^\s{4}([A-Z][a-zA-Z0-9]+)\s*(\{|,)')
+    foreach ($vm in $variantMatches) {
+        $sub = $vm.Groups[1].Value.ToLower()
         $subPattern = "(?m)^###\s+``" + $sub + "``"
         if ($cliRef -notmatch $subPattern) {
             $missingDocs += "subcommand '$sub'"
@@ -276,7 +281,7 @@ $emojiFiles = Get-ChildItem -Path $Root -Recurse -File | Where-Object {
     ($_.FullName -notmatch '\\target\\') -and ($_.FullName -notmatch '\\\.git\\') -and
     ($_.Extension -match '\.(rs|md|ps1|toml|json|yaml)$')
 }
-$emojiRegex = [regex]'[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF]'
+$emojiRegex = [regex]'[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]'
 foreach ($f in $emojiFiles) {
     $content = Get-Content $f.FullName -Raw
     if ($content -and ($content -match $emojiRegex)) {
@@ -452,9 +457,16 @@ if ($RunLeakBench) {
             $binPath = Join-Path $Root "target\debug\wstrace.exe"
         }
         if (Test-Path $binPath) {
-            $benchCmd = "python `"$gigaScript`" bench --exec `"\`"$binPath\`" -m stream -d 2 run cmd.exe -- /c exit`" --duration 3"
-            Write-Host "       Running: $benchCmd" -ForegroundColor Gray
-            $leakOut = Invoke-Expression $benchCmd 2>&1
+            $benchArgs = @(
+                $gigaScript,
+                "bench",
+                "--exec",
+                "`"$binPath`" -m stream -d 2 run cmd.exe -- /c exit",
+                "--duration",
+                "3"
+            )
+            Write-Host "       Running: python $($benchArgs -join ' ')" -ForegroundColor Gray
+            $leakOut = & python $benchArgs 2>&1
             Write-Host $leakOut
             Report-Success "Dynamic leak audit completed successfully."
         } else {

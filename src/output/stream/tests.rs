@@ -2,13 +2,21 @@ use super::*;
 use crate::cli::{Commands, OutputMode};
 use crate::event::EventCategory;
 use crossbeam_channel::unbounded;
-use std::io::BufRead;
 use std::path::PathBuf;
 
 struct TempFileGuard(PathBuf);
 impl Drop for TempFileGuard {
     fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
+        if self.0.exists() {
+            // Under Windows, file handles may take a few milliseconds to be fully released
+            // by external services (e.g. indexer or antivirus); retry briefly before giving up.
+            for _ in 0..10 {
+                if std::fs::remove_file(&self.0).is_ok() || !self.0.exists() {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(15));
+            }
+        }
     }
 }
 
@@ -72,19 +80,18 @@ fn test_stream_when_valid_events_then_writes_valid_ndjson_records() {
     // Assert
     assert_eq!(collected.len(), 2);
     assert!(temp_path.exists());
-    let file = File::open(&temp_path).expect("Failed to open NDJSON file");
-    let reader = std::io::BufReader::new(file);
-    let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
+    let content = std::fs::read_to_string(&temp_path).expect("Failed to read NDJSON file");
+    let lines: Vec<&str> = content.lines().collect();
     assert_eq!(lines.len(), 2);
 
     // Verify JSON validity and content of each line
     let parsed_1: serde_json::Value =
-        serde_json::from_str(&lines[0]).expect("Line 1 must be valid JSON");
+        serde_json::from_str(lines[0]).expect("Line 1 must be valid JSON");
     assert_eq!(parsed_1["operation"], "NtOpenFile");
     assert_eq!(parsed_1["target"], "C:\\test1.txt");
 
     let parsed_2: serde_json::Value =
-        serde_json::from_str(&lines[1]).expect("Line 2 must be valid JSON");
+        serde_json::from_str(lines[1]).expect("Line 2 must be valid JSON");
     assert_eq!(parsed_2["operation"], "RegOpenKey");
     assert_eq!(parsed_2["target"], "HKLM\\Software");
 }
@@ -152,9 +159,8 @@ fn test_stream_when_filtered_by_failures_only_then_writes_only_failure_ndjson_re
     assert_eq!(collected.len(), 1);
     assert_eq!(collected[0].target, "C:\\denied.txt");
 
-    let file = File::open(&temp_path).expect("Failed to open NDJSON file");
-    let reader = std::io::BufReader::new(file);
-    let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
+    let content = std::fs::read_to_string(&temp_path).expect("Failed to read NDJSON file");
+    let lines: Vec<&str> = content.lines().collect();
     assert_eq!(lines.len(), 1);
     assert!(lines[0].contains("STATUS_ACCESS_DENIED"));
 }
@@ -235,9 +241,8 @@ fn test_stream_when_include_exclude_active_then_filters_ndjson_file_output() {
     assert_eq!(collected.len(), 1);
     assert_eq!(collected[0].target, "C:\\target\\file.txt");
 
-    let file = File::open(&temp_path).expect("Failed to open NDJSON file");
-    let reader = std::io::BufReader::new(file);
-    let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
+    let content = std::fs::read_to_string(&temp_path).expect("Failed to read NDJSON file");
+    let lines: Vec<&str> = content.lines().collect();
     assert_eq!(lines.len(), 1);
 }
 

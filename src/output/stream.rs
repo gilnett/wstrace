@@ -122,8 +122,9 @@ pub fn run_stream(event_rx: Receiver<TraceEvent>, args: &Cli, target_pid: u32) -
         thread::sleep(Duration::from_millis(50));
     }
 
-    if let Some(ref mut writer) = file_writer {
+    if let Some(mut writer) = file_writer.take() {
         let _ = writer.flush();
+        drop(writer);
     }
 
     collected_events.into_iter().collect()

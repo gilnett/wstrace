@@ -17,8 +17,7 @@ fn test_cli_parse_run_command() {
 
     // Verify arguments can also be passed directly without '--'
     let args_direct = vec!["wstrace", "run", "cmd.exe", "/c", "dir"];
-    let parsed_direct =
-        Cli::try_parse_from(args_direct).expect("Direct args parsing must succeed");
+    let parsed_direct = Cli::try_parse_from(args_direct).expect("Direct args parsing must succeed");
     match parsed_direct.command {
         Commands::Run { command, args } => {
             assert_eq!(command, "cmd.exe");

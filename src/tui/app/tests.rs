@@ -421,14 +421,7 @@ fn test_bounded_ring_buffer_when_burst_workload_then_evicts_oldest_records_fifo(
     // Arrange
     const CAPACITY: usize = 10;
     const BURST_TOTAL: usize = 100;
-    let mut app = App::new(
-        100,
-        "process.exe".to_string(),
-        false,
-        None,
-        None,
-        CAPACITY,
-    );
+    let mut app = App::new(100, "process.exe".to_string(), false, None, None, CAPACITY);
 
     // Act
     for i in 1..=BURST_TOTAL {
@@ -508,7 +501,8 @@ fn test_bounded_ring_buffer_when_selected_at_head_and_eviction_occurs_then_clamp
 }
 
 #[test]
-fn test_bounded_ring_buffer_when_selected_at_tail_and_eviction_occurs_then_auto_scrolls_to_new_tail() {
+fn test_bounded_ring_buffer_when_selected_at_tail_and_eviction_occurs_then_auto_scrolls_to_new_tail(
+) {
     // Arrange
     let mut app = App::new(100, "process.exe".to_string(), false, None, None, 3);
     for i in 1..=3 {

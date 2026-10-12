@@ -131,14 +131,7 @@ fn test_cli_integration_buffer_size_with_attach() {
 #[test]
 fn test_cli_integration_buffer_size_with_all() {
     // Arrange
-    let args = vec![
-        "wstrace",
-        "-m",
-        "stream",
-        "--buffer-size",
-        "5000",
-        "all",
-    ];
+    let args = vec!["wstrace", "-m", "stream", "--buffer-size", "5000", "all"];
 
     // Act
     let parsed = Cli::try_parse_from(args).expect("CLI parsing failed");

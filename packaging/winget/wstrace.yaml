@@ -1,6 +1,6 @@
 # Winget Package Manifest for wstrace
 PackageIdentifier: gilnett.wstrace
-PackageVersion: 0.2.1
+PackageVersion: 0.2.2
 PackageLocale: en-US
 PackageName: wstrace
 Publisher: gilnett
@@ -21,7 +21,7 @@ Installers:
       - RelativeFilePath: wstrace.exe
         PortableCommandAlias: wstrace
     InstallerType: zip
-    InstallerUrl: https://github.com/gilnett/wstrace/releases/download/v0.2.1/wstrace-v0.2.1-windows-x86_64.zip
+    InstallerUrl: https://github.com/gilnett/wstrace/releases/download/v0.2.2/wstrace-v0.2.2-windows-x86_64.zip
     InstallerSha256: 9fdccc816ba2271c8df93d8b4b5ad9fbda284c163060c12ba238ad5183b157f2
 ManifestType: singleton
 ManifestVersion: 1.6.0

@@ -73,8 +73,29 @@ This document details the internal architecture, design principles, and componen
 
 ---
 
-## 3. Design Principles
+## 3. Design Principles & Technical Boundaries
 
 1. **Zero Kernel Drivers (Ring-3 Safety)**: Completely userland-based, avoiding Blue Screen of Death (BSOD) risks or rootkit attack surfaces.
-2. **Air-Gapped & Sovereign**: Zero network calls, zero telemetry reporting. Trace data stays strictly within workstation RAM.
-3. **Decoupled Event Bus**: Multi-threaded capture threads communicate with rendering or output engines via bounded/unbounded crossbeam channels to avoid blocking the monitored application.
+2. **Air-Gapped & Sovereign**: Zero network calls, zero telemetry reporting. Trace data stays strictly within workstation RAM or local output files.
+3. **Decoupled Event Bus & Dual Retention**: Multi-threaded capture threads communicate with rendering and streaming engines via Crossbeam channels. Supports lossy real-time monitoring (default, dropping overruns to maintain responsiveness) and planned lossless mode (`--zero-drop`).
+4. **Minimal Dependencies & Lean Footprint**: Pure standard library Rust and lean raw bindings (`windows-sys`). Standalone release executable targeted under 5 MB, with strict RAM caps (~15 MB for 50,000 buffered events).
+
+---
+
+## 4. Testing & Quality Assurance Architecture
+
+Every component in `wstrace` follows strict verification standards:
+
+1. **100% CLI Synchronization**:
+   - Every CLI argument, flag, and subcommand defined in `src/cli.rs` must have corresponding parsing and edge-case validation tests in `tests/cli_tests.rs` and `src/cli.rs`.
+2. **Isolated & Unprivileged Unit Tests**:
+   - All unit tests run in standard user mode without requiring Administrator elevation, external network connectivity, or active kernel ETW sessions.
+   - Deterministic test fixtures and the Arrange-Act-Assert (AAA) pattern isolate business logic (e.g., ring buffer eviction, filter predicates, JSON serialization).
+3. **Headless TUI Testing**:
+   - The TUI rendering pipeline is tested using Ratatui's in-memory `TestBackend`, validating layout formatting, overrun badges, and status bar elements without spawning a physical console window.
+4. **Performance & Reliability Benchmarking**:
+   - Micro-benchmarks profile hot-path event ingestion, ring buffer operations, and JSON serialization (`benches/perf_bench.rs`).
+   - Macro-benchmarks measure target process overhead and host resource utilization.
+   - Endurance and reliability testing verifies zero memory or handle leaks and capture integrity under heavy burst loads.
+
+---

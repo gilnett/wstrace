@@ -121,7 +121,7 @@ wstrace -m stream [-d <seconds>] run <executable_path>
 
 ---
 
-> 📖 **Comprehensive Manual & Advanced Options:**
+> **Comprehensive Manual & Advanced Options:**
 > For advanced path filtering (`--include` / `--exclude`), child tracking (`-C`), JSON reports (`--export-json`), clipboard exports (`--copy`), and scripting options, consult the **[CLI Reference Manual](docs/CLI_REFERENCE.md)** or run `wstrace --help`.
 
 ---

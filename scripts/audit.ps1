@@ -22,7 +22,8 @@
 param(
     [switch]$SkipTests = $false,
     [switch]$SkipBench = $false,
-    [switch]$RunLeakBench = $false
+    [switch]$RunLeakBench = $false,
+    [switch]$FailFast = $false
 )
 
 $ErrorActionPreference = "Continue"
@@ -46,6 +47,11 @@ function Report-Success($msg) {
 function Report-Failure($msg) {
     Write-Host " [FAIL] $msg" -ForegroundColor Red
     $script:FailCount++
+    if ($FailFast) {
+        Write-Host " [ABORT] Fast-fail triggered on audit failure." -ForegroundColor Red
+        [Environment]::ExitCode = 1
+        exit 1
+    }
 }
 
 function Report-Warn($msg) {
@@ -143,7 +149,7 @@ try {
         $bannedCrates = @('tokio', 'actix', 'reqwest', 'tonic', 'async-std', 'smol', 'hyper', 'rayon')
         $foundBanned = @()
         foreach ($bc in $bannedCrates) {
-            if ($treeOut -match "(?m)^\s*(?:├──|└──|│\s+)*$bc\s+v") {
+            if ($treeOut -match "(?m)^\s*[^a-zA-Z0-9_\s]*\s*$bc\s+v") {
                 $foundBanned += $bc
             }
         }
@@ -209,8 +215,24 @@ if ((Test-Path $cliRsPath) -and (Test-Path $cliRefPath)) {
         }
     }
 
-    # Extract subcommands dynamically from Commands enum in src/cli.rs
-    $commandsSection = [regex]::Match($cliRs, '(?s)pub\s+enum\s+Commands\s*\{.*?(?=pub\s+enum\s+OutputMode)').Value
+    # Extract subcommands dynamically from Commands enum in src/cli.rs using balanced braces
+    $commandsMatch = [regex]::Match($cliRs, 'pub\s+enum\s+Commands\s*\{')
+    $commandsSection = ""
+    if ($commandsMatch.Success) {
+        $startIndex = $commandsMatch.Index + $commandsMatch.Length - 1
+        $braceCount = 0
+        for ($i = $startIndex; $i -lt $cliRs.Length; $i++) {
+            if ($cliRs[$i] -eq '{') {
+                $braceCount++
+            } elseif ($cliRs[$i] -eq '}') {
+                $braceCount--
+                if ($braceCount -eq 0) {
+                    $commandsSection = $cliRs.Substring($startIndex, $i - $startIndex + 1)
+                    break
+                }
+            }
+        }
+    }
     $variantMatches = [regex]::Matches($commandsSection, '(?m)^\s{4}([A-Z][a-zA-Z0-9]+)\s*(\{|,)')
     foreach ($vm in $variantMatches) {
         $sub = $vm.Groups[1].Value.ToLower()
@@ -485,7 +507,10 @@ Write-Host " AUDIT SUMMARY: $PassCount passed, $FailCount failed" -ForegroundCol
 Write-Host "========================================================" -ForegroundColor Cyan
 
 if ($FailCount -gt 0) {
+    Write-Host "`n [FATAL] Audit suite failed with $FailCount issue(s). Exiting with code 1." -ForegroundColor Red
+    [Environment]::ExitCode = 1
     exit 1
 } else {
+    [Environment]::ExitCode = 0
     exit 0
 }

@@ -22,41 +22,54 @@
 
 ## Installation
 
-### PowerShell Script
+### 1. Cargo (From Source)
+
+Install directly from GitHub:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\packaging\install.ps1
+cargo install --git https://github.com/gilnett/wstrace.git
 ```
 
-Installs `wstrace.exe` to `$HOME\.local\bin` and registers the directory into the User `PATH` environment variable.
+Or from a cloned repository:
 
-### Windows Package Manager (Winget)
-
-```cmd
-winget install gilnett.wstrace
-```
-
-### Scoop
-
-```cmd
-scoop install packaging/scoop/wstrace.json
-```
-
-### Cargo (From Source)
-
-```bash
+```powershell
 cargo install --path .
 ```
 
-### Prebuilt Binary
-
-Compile directly using the Rust toolchain:
-
-```bash
+```powershell
 cargo build --release
 ```
 
-The resulting standalone executable is located at `target\release\wstrace.exe`.
+The resulting binary is located at `target\release\wstrace.exe`.
+
+### 2. Standalone Binary (GitHub Releases)
+
+Download precompiled standalone binaries from [GitHub Releases](https://github.com/gilnett/wstrace/releases).
+
+### 3. Package Managers (Available with Published Releases)
+
+> [!NOTE]
+> Winget and Scoop manifests require published release archives on GitHub.
+
+#### Windows Package Manager (Winget)
+
+Once published in the official [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) repository:
+
+```powershell
+winget install gilnett.wstrace
+```
+
+To test locally using the repository manifest:
+
+```powershell
+winget install --manifest .\packaging\winget\wstrace.yaml
+```
+
+#### Scoop
+
+```powershell
+scoop install .\packaging\scoop\wstrace.json
+```
 
 ---
 

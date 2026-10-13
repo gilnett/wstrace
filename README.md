@@ -22,7 +22,19 @@
 
 ## Installation
 
-### 1. Cargo (From Source)
+### 1. PowerShell One-Liner (Zero-Clone)
+
+Run in PowerShell to automatically install the latest release to `$HOME\.local\bin` and add it to your User `PATH`:
+
+```powershell
+irm https://raw.githubusercontent.com/gilnett/wstrace/main/packaging/install.ps1 | iex
+```
+
+### 2. Standalone Binary (GitHub Releases)
+
+Download precompiled standalone binaries from [GitHub Releases](https://github.com/gilnett/wstrace/releases).
+
+### 3. Cargo (From Source)
 
 Install directly from GitHub:
 
@@ -30,11 +42,7 @@ Install directly from GitHub:
 cargo install --git https://github.com/gilnett/wstrace.git
 ```
 
-Or from a cloned repository:
-
-```powershell
-cargo install --path .
-```
+Or build locally from a cloned repository:
 
 ```powershell
 cargo build --release
@@ -42,14 +50,10 @@ cargo build --release
 
 The resulting binary is located at `target\release\wstrace.exe`.
 
-### 2. Standalone Binary (GitHub Releases)
-
-Download precompiled standalone binaries from [GitHub Releases](https://github.com/gilnett/wstrace/releases).
-
-### 3. Package Managers (Available with Published Releases)
+### 4. Package Managers (Winget & Scoop)
 
 > [!NOTE]
-> Winget and Scoop manifests require published release archives on GitHub.
+> Winget and Scoop manifests are synchronized automatically with published GitHub Releases.
 
 #### Windows Package Manager (Winget)
 

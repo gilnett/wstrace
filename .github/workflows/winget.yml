@@ -1,0 +1,16 @@
+name: Publish to Winget
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-winget:
+    name: Publish to Microsoft Winget
+    runs-on: windows-latest
+    steps:
+      - name: Submit to Windows Package Manager
+        uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: gilnett.wstrace
+          token: ${{ secrets.WINGET_TOKEN }}

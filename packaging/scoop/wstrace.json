@@ -6,7 +6,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/gilnett/wstrace/releases/download/v0.2.2/wstrace-v0.2.2-windows-x86_64.zip",
-      "hash": "e38e0961da9ae8927c3e9e709a0345e12dd672b151f26af29b65a6110151e267"
+      "hash": "3e935269c7ef1c900711a1b8c2bfd178fbfe4ec5bc61eec63307852d7597c25d"
     }
   },
   "bin": "wstrace.exe",

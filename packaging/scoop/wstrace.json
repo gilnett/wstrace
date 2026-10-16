@@ -7,6 +7,10 @@
     "64bit": {
       "url": "https://github.com/gilnett/wstrace/releases/download/v0.3.0/wstrace-v0.3.0-windows-x86_64.zip",
       "hash": "b509f452626a58e71402eb84f31ee0b52223a15e7c9fbec58f6823ef1e1d1f20"
+    },
+    "arm64": {
+      "url": "https://github.com/gilnett/wstrace/releases/download/v0.3.0/wstrace-v0.3.0-windows-aarch64.zip",
+      "hash": "5f80a4d5cb6b7de72499c131169144e033747e1fc2177204455784b8827987a9"
     }
   },
   "bin": "wstrace.exe",

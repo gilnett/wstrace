@@ -134,6 +134,11 @@ jobs:
           HASH_X86_64=$(grep -i "windows-x86_64.zip" final-assets/SHA256SUMS.txt | awk '{print $1}' | head -n 1)
           HASH_ARM64=$(grep -i "windows-aarch64.zip" final-assets/SHA256SUMS.txt | awk '{print $1}' | head -n 1)
           
+          if [ -z "$HASH_X86_64" ] || [ -z "$HASH_ARM64" ]; then
+            echo "Error: Failed to extract required SHA256 checksums from final-assets/SHA256SUMS.txt" >&2
+            exit 1
+          fi
+          
           echo "Synchronizing manifests for release $TAG (x86_64: $HASH_X86_64, arm64: $HASH_ARM64)"
           
           git config user.name "github-actions[bot]"
@@ -144,7 +149,7 @@ jobs:
           git checkout -B sync-work origin/main
           
           TAG="$TAG" VERSION="$VERSION" HASH_X86_64="$HASH_X86_64" HASH_ARM64="$HASH_ARM64" python3 -c "
-          import os, re, json
+          import os, sys, re, json
 
           tag = os.environ.get('TAG', '')
           version = os.environ.get('VERSION', '')
@@ -153,44 +158,48 @@ jobs:
 
           # 1. Update Scoop manifest
           scoop_path = 'packaging/scoop/wstrace.json'
-          if os.path.exists(scoop_path) and hash_x64 and hash_arm64:
-              with open(scoop_path, 'r', encoding='utf-8') as f:
-                  d = json.load(f)
-              d['version'] = version
-              arch = d.setdefault('architecture', {})
-              arch.setdefault('64bit', {})['url'] = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-x86_64.zip'
-              arch['64bit']['hash'] = hash_x64
-              arch.setdefault('arm64', {})['url'] = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-aarch64.zip'
-              arch['arm64']['hash'] = hash_arm64
-              with open(scoop_path, 'w', encoding='utf-8') as f:
-                  json.dump(d, f, indent=2)
-                  f.write('\n')
+          if not os.path.exists(scoop_path):
+              sys.exit(f'Error: Scoop manifest not found at {scoop_path}')
+
+          with open(scoop_path, 'r', encoding='utf-8') as f:
+              d = json.load(f)
+          d['version'] = version
+          arch = d.setdefault('architecture', {})
+          arch.setdefault('64bit', {})['url'] = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-x86_64.zip'
+          arch['64bit']['hash'] = hash_x64
+          arch.setdefault('arm64', {})['url'] = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-aarch64.zip'
+          arch['arm64']['hash'] = hash_arm64
+          with open(scoop_path, 'w', encoding='utf-8') as f:
+              json.dump(d, f, indent=2)
+              f.write('\n')
 
           # 2. Update Winget manifest
           winget_path = 'packaging/winget/wstrace.yaml'
-          if os.path.exists(winget_path) and hash_x64:
-              with open(winget_path, 'r', encoding='utf-8') as f:
-                  content = f.read()
-              content = re.sub(r'(?m)^PackageVersion:\s*\S+', f'PackageVersion: {version}', content)
+          if not os.path.exists(winget_path):
+              sys.exit(f'Error: Winget manifest not found at {winget_path}')
 
-              def update_winget_arch(text, arch, url, sha):
-                  pattern = rf'(- Architecture:\s*{arch}\b[\s\S]*?)(?=\n\s*- Architecture:|\Z)'
-                  def repl(m):
-                      block = m.group(1)
-                      block = re.sub(r'(?m)^(\s*InstallerUrl:\s*)\S+', rf'\g<1>{url}', block)
-                      block = re.sub(r'(?m)^(\s*InstallerSha256:\s*)\S+', rf'\g<1>{sha}', block)
-                      return block
-                  return re.sub(pattern, repl, text)
+          with open(winget_path, 'r', encoding='utf-8') as f:
+              content = f.read()
+          content = re.sub(r'(?m)^PackageVersion:\s*\S+', f'PackageVersion: {version}', content)
 
-              url_x64 = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-x86_64.zip'
-              content = update_winget_arch(content, 'x64', url_x64, hash_x64)
+          def update_winget_arch(text, arch, url, sha):
+              pattern = rf'(- Architecture:\s*{arch}\b[\s\S]*?)(?=\n\s*- Architecture:|\Z)'
+              def repl(m):
+                  block = m.group(1)
+                  block = re.sub(r'(?m)^(\s*InstallerUrl:\s*)\S+', rf'\g<1>{url}', block)
+                  block = re.sub(r'(?m)^(\s*InstallerSha256:\s*)\S+', rf'\g<1>{sha}', block)
+                  return block
+              return re.sub(pattern, repl, text)
 
-              if hash_arm64:
-                  url_arm64 = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-aarch64.zip'
-                  content = update_winget_arch(content, 'arm64', url_arm64, hash_arm64)
+          url_x64 = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-x86_64.zip'
+          content = update_winget_arch(content, 'x64', url_x64, hash_x64)
 
-              with open(winget_path, 'w', encoding='utf-8') as f:
-                  f.write(content)
+          if hash_arm64:
+              url_arm64 = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-aarch64.zip'
+              content = update_winget_arch(content, 'arm64', url_arm64, hash_arm64)
+
+          with open(winget_path, 'w', encoding='utf-8') as f:
+              f.write(content)
           "
           
           git add packaging/scoop/wstrace.json packaging/winget/wstrace.yaml
@@ -202,7 +211,7 @@ jobs:
               echo "Direct push to main rejected by branch protection. Creating synchronization pull request..."
               SYNC_BRANCH="chore/sync-manifests-$TAG"
               git branch -M "$SYNC_BRANCH"
-              git push -u origin "$SYNC_BRANCH" --force
+              git push -u origin "$SYNC_BRANCH" --force-with-lease
               gh pr create \
                 --title "chore(packaging): sync release sha256 checksums for $TAG" \
                 --body "Automated release checksum synchronization for $TAG release assets." \

@@ -136,6 +136,13 @@ jobs:
           
           echo "Synchronizing manifests for release $TAG (x86_64: $HASH_X86_64, arm64: $HASH_ARM64)"
           
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Checkout origin/main to guarantee clean sync commit without rebase conflicts
+          git fetch origin main
+          git checkout -B sync-work origin/main
+          
           TAG="$TAG" VERSION="$VERSION" HASH_X86_64="$HASH_X86_64" HASH_ARM64="$HASH_ARM64" python3 -c "
           import os, re, json
 
@@ -165,26 +172,36 @@ jobs:
               with open(winget_path, 'r', encoding='utf-8') as f:
                   content = f.read()
               content = re.sub(r'(?m)^PackageVersion:\s*\S+', f'PackageVersion: {version}', content)
-              content = re.sub(r'(?m)^(\s*InstallerUrl:\s*)\S+', rf'\g<1>https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-x86_64.zip', content)
-              content = re.sub(r'(?m)^(\s*InstallerSha256:\s*)\S+', rf'\g<1>{hash_x64}', content)
+
+              def update_winget_arch(text, arch, url, sha):
+                  pattern = rf'(- Architecture:\s*{arch}\b[\s\S]*?)(?=\n\s*- Architecture:|\Z)'
+                  def repl(m):
+                      block = m.group(1)
+                      block = re.sub(r'(?m)^(\s*InstallerUrl:\s*)\S+', rf'\g<1>{url}', block)
+                      block = re.sub(r'(?m)^(\s*InstallerSha256:\s*)\S+', rf'\g<1>{sha}', block)
+                      return block
+                  return re.sub(pattern, repl, text)
+
+              url_x64 = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-x86_64.zip'
+              content = update_winget_arch(content, 'x64', url_x64, hash_x64)
+
+              if hash_arm64:
+                  url_arm64 = f'https://github.com/gilnett/wstrace/releases/download/{tag}/wstrace-{tag}-windows-aarch64.zip'
+                  content = update_winget_arch(content, 'arm64', url_arm64, hash_arm64)
+
               with open(winget_path, 'w', encoding='utf-8') as f:
                   f.write(content)
           "
           
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add packaging/scoop/wstrace.json packaging/winget/wstrace.yaml
           
           if ! git diff --cached --quiet; then
             git commit -m "chore(packaging): sync release sha256 checksums for $TAG [skip ci]"
             
-            git fetch origin main
-            git rebase origin/main || git rebase --abort
-            
-            if ! git push origin HEAD:main; then
+            if ! git push origin sync-work:main; then
               echo "Direct push to main rejected by branch protection. Creating synchronization pull request..."
               SYNC_BRANCH="chore/sync-manifests-$TAG"
-              git checkout -b "$SYNC_BRANCH"
+              git branch -M "$SYNC_BRANCH"
               git push -u origin "$SYNC_BRANCH" --force
               gh pr create \
                 --title "chore(packaging): sync release sha256 checksums for $TAG" \

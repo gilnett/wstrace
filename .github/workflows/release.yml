@@ -121,3 +121,47 @@ jobs:
           files: |
             final-assets/*.zip
             final-assets/SHA256SUMS.txt
+
+      - name: Synchronize Packaging Manifests to Main
+        shell: bash
+        run: |
+          TAG="${{ steps.release_tag.outputs.tag }}"
+          VERSION="${TAG#v}"
+          
+          HASH_X86_64=$(grep -i "windows-x86_64.zip" final-assets/SHA256SUMS.txt | awk '{print $1}' | head -n 1)
+          HASH_ARM64=$(grep -i "windows-aarch64.zip" final-assets/SHA256SUMS.txt | awk '{print $1}' | head -n 1)
+          
+          echo "Synchronizing manifests for release $TAG (x86_64: $HASH_X86_64, arm64: $HASH_ARM64)"
+          
+          if [ -f "packaging/winget/wstrace.yaml" ] && [ -n "$HASH_X86_64" ]; then
+            sed -i -E "s/PackageVersion: .*/PackageVersion: $VERSION/" packaging/winget/wstrace.yaml
+            sed -i -E "s|https://github.com/gilnett/wstrace/releases/download/[^/]+/wstrace-[^/]+-windows-x86_64.zip|https://github.com/gilnett/wstrace/releases/download/$TAG/wstrace-$TAG-windows-x86_64.zip|" packaging/winget/wstrace.yaml
+            sed -i -E "s/InstallerSha256: [a-fA-F0-9]{64}/InstallerSha256: $HASH_X86_64/" packaging/winget/wstrace.yaml
+          fi
+          
+          if [ -f "packaging/scoop/wstrace.json" ] && [ -n "$HASH_X86_64" ] && [ -n "$HASH_ARM64" ]; then
+            python3 -c "
+          import json
+          with open('packaging/scoop/wstrace.json', 'r') as f:
+              d = json.load(f)
+          d['version'] = '$VERSION'
+          if 'architecture' not in d: d['architecture'] = {}
+          if '64bit' not in d['architecture']: d['architecture']['64bit'] = {}
+          if 'arm64' not in d['architecture']: d['architecture']['arm64'] = {}
+          d['architecture']['64bit']['url'] = f'https://github.com/gilnett/wstrace/releases/download/$TAG/wstrace-$TAG-windows-x86_64.zip'
+          d['architecture']['64bit']['hash'] = '$HASH_X86_64'
+          d['architecture']['arm64']['url'] = f'https://github.com/gilnett/wstrace/releases/download/$TAG/wstrace-$TAG-windows-aarch64.zip'
+          d['architecture']['arm64']['hash'] = '$HASH_ARM64'
+          with open('packaging/scoop/wstrace.json', 'w') as f:
+              json.dump(d, f, indent=2)
+              f.write('\n')
+          "
+          fi
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packaging/scoop/wstrace.json packaging/winget/wstrace.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(packaging): sync release sha256 checksums for $TAG [skip ci]"
+            git push origin HEAD:main
+          fi

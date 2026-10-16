@@ -11,7 +11,7 @@ This document outlines the version milestones and planned capabilities for `wstr
 | **v0.2.0** | **Released** | Interactive Ratatui TUI, Win32 Toolhelp probe, stream mode, category filtering, JSON session export |
 | **v0.2.1** | **Implemented** | Bounded TUI ring buffer (`VecDeque`), `--buffer-size`, streaming to disk (`-o`), drop overrun metrics |
 | **v0.2.2** | **Implemented** | Audit suite hardening, secrets & personal paths scanner, source hygiene, CLI doc sync, leak bench |
-| **v0.3.0** | **Planned** | Native ETW ingestion, zero-elevation parity engine, QPC hardware timestamps, ProcMon parity |
+| **v0.3.0** | **Implemented** | Native ETW kernel session, zero-elevation parity engine, QPC timers, IP Helper network probe |
 | **v0.4.0** | **Planned** | Advanced filter engine, Win32 error code filters, call summary statistics (`--summary-stats`), TUI columns |
 | **v0.5.0** | **Planned** | Lossless capture mode (`--zero-drop`), causal Activity ID correlation, Perfetto export format |
 | **v0.6.0** | **Planned** | Real-time resource dashboard (CPU, Working Set RSS, Handles, GDI/USER objects), process tree view |
@@ -44,17 +44,14 @@ This document outlines the version milestones and planned capabilities for `wstr
 - Automated dynamic leak audit using `giga_audit bench` to verify flat memory slope (0 MB/min) and handle stability on `wstrace.exe`.
 - Dependency tree validation (`cargo tree`) enforcing lean footprints, zero bloated runtime crates, and pure `windows-sys` bindings.
 
-### v0.3.0 — Native ETW Ingestion & Zero-Elevation Architecture (Planned)
+### v0.3.0 — Native ETW Ingestion & Zero-Elevation Architecture (Implemented)
 - Native user-space ETW kernel sessions without third-party drivers (`OpenTraceW`, `ProcessTrace`).
-- Core providers: `Microsoft-Windows-Kernel-File`, `Registry`, and `Network`.
-- Hardware QPC timestamps for nanosecond-precision cross-provider ordering.
-- Zero-Elevation parity engine: complete feature set across `run`, `attach`, process trees, module loads, call stacks, and network tracking without requiring Administrator elevation.
-- Architectural countermeasures:
-  - *Passive fallback monitor*: Win32 Job Objects (`AssignProcessToJobObject`) and thread suspension snapshots for targets with anti-debugging protections or pre-existing debuggers.
-  - *Hybrid network capture*: combine IP Helper tables (`GetExtendedTcpTable`) with unprivileged user-mode ETW providers (`Microsoft-Windows-WebIO`, `Microsoft-Windows-WinINet`) to eliminate drops on short-lived sockets (< 10 ms).
-  - *Fine-grained I/O correlation*: link directory notifications (`ReadDirectoryChangesW`) with per-process `GetProcessIoCounters` throughput tracking.
-  - *Zero-latency event pump*: decouple `WaitForDebugEventEx` from processing via an allocation-free lock-free ring buffer (`crossbeam-channel`) and immediate event dispatch to prevent target process stalls.
+- Core providers: `Microsoft-Windows-Kernel-File`, `Registry`, and `Network` with PID-isolated session naming.
+- Hardware QPC timestamps for monotonic microsecond elapsed calculations (`read_qpc_ticks`, `calculate_elapsed_us`).
+- Real-time unprivileged network probe (IPv4/IPv6 TCP/UDP via `GetExtendedTcpTable` / `GetExtendedUdpTable` with buffer reuse).
 - Graceful elevation detection via `GetTokenInformation(TokenElevation)`: elevation functions solely as an accelerator for system-wide background sessions (`all` mode).
+- Structured NTSTATUS and Win32 error code mappings with severity categorization (`ErrorSeverity`).
+- Roadmap architectural items deferred to v0.4.0+: Win32 Job Objects passive fallback and fine-grained directory notification correlation.
 
 ### v0.4.0 — Advanced Filter Engine & Operation Statistics (Planned)
 - Non-destructive filtering engine with boolean combinators (`AND`, `OR`, `NOT`) and regex predicates.

@@ -102,6 +102,28 @@ scoop install .\packaging\scoop\wstrace.json
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart LR
+    CLI["CLI Engine<br/><code>run | attach | all</code>"] --> PROBES
+
+    subgraph PROBES["Zero-Driver Probes"]
+        W32["Win32 Debug API<br/>(Proc, Threads, DLLs)"]
+        NET["IP Helper API<br/>(TCP/UDP Sockets)"]
+        ETW["Native ETW<br/>(I/O, Registry)"]
+    end
+
+    W32 & NET & ETW -->|TraceEvent| BUS["Lock-Free Bus<br/><code>crossbeam</code>"]
+
+    BUS --> TUI["TUI View<br/>(ratatui)"]
+    BUS --> STREAM["Stream View<br/>(stdout)"]
+
+    TUI & STREAM --> OUT["Sinks<br/>(Console, JSON, Clipboard)"]
+```
+
+---
+
 ## Quickstart & Usage
 
 ### 1. Verification

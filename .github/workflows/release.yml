@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Download all packaged artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: release-assets
 
@@ -112,7 +112,7 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Create Draft GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
           name: "wstrace ${{ steps.release_tag.outputs.tag }}"

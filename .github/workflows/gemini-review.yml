@@ -201,16 +201,45 @@ jobs:
             promptParts.push("GIT DIFF TO REVIEW:\n```diff\n" + truncatedDiff + "\n```");
             const prompt = promptParts.join("\n");
 
-            // 3. Call Gemini API with retries (Generous Free Tier: gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash)
-            const models = [
-              'gemini-2.5-flash',
-              'gemini-3.5-flash',
-              'gemini-2.0-flash',
-              'gemini-1.5-flash',
-              'gemini-2.5-flash-lite',
-              'gemini-3.8-flash',
-              'gemini-3.5-flash'
-            ];
+            // 3. Dynamically discover active Gemini models supported by the API key
+            let models = [];
+            try {
+              const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+              if (listRes.ok) {
+                const listData = await listRes.json();
+                const available = (listData.models || [])
+                  .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+                  .map(m => m.name.replace(/^models\//, ''))
+                  .filter(name => name.includes('flash') && !name.includes('embedding') && !name.includes('vision') && !name.includes('audio'));
+
+                const preferred = [
+                  'gemini-2.5-flash',
+                  'gemini-3.5-flash',
+                  'gemini-2.0-flash',
+                  'gemini-1.5-flash',
+                  'gemini-2.5-flash-lite'
+                ];
+
+                models = preferred.filter(p => available.includes(p));
+                for (const m of available) {
+                  if (!models.includes(m)) {
+                    models.push(m);
+                  }
+                }
+              }
+            } catch (err) {
+              console.log(`Dynamic model discovery error: ${err.message}. Using fallback list.`);
+            }
+
+            if (models.length === 0) {
+              models = [
+                'gemini-2.5-flash',
+                'gemini-2.0-flash',
+                'gemini-1.5-flash'
+              ];
+            }
+
+            console.log(`Candidate models for review: ${models.join(', ')}`);
             let reviewText = null;
             let usedModel = null;
 

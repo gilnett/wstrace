@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use crossbeam_channel::Receiver;
+use std::sync::mpsc::Receiver;
 
 use crate::cli::Cli;
 use crate::event::TraceEvent;

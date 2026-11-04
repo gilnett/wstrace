@@ -114,7 +114,7 @@ flowchart LR
         ETW["Native ETW<br/>(I/O, Registry)"]
     end
 
-    W32 & NET & ETW -->|TraceEvent| BUS["Lock-Free Bus<br/><code>crossbeam</code>"]
+    W32 & NET & ETW -->|TraceEvent| BUS["Lock-Free Bus<br/><code>mpsc</code>"]
 
     BUS --> TUI["TUI View<br/>(ratatui)"]
     BUS --> STREAM["Stream View<br/>(stdout)"]

@@ -10,7 +10,7 @@ Thank you for your interest in contributing to `wstrace`. To ensure high standar
 - **Core Engine:** Idiomatic Rust (2021 Edition).
 - **Scripting & Packaging:** PowerShell (strictly scoped to packaging and installation scripts).
 - **Zero Drivers / Zero Kernel Bloat:** All instrumentation must strictly rely on non-invasive Win32 APIs, ToolHelp, and user-mode Event Tracing for Windows (ETW).
-- **Performance:** Sub-millisecond latency, non-blocking asynchronous event bus (`crossbeam-channel`), and real-time responsive terminal rendering.
+- **Performance:** Sub-millisecond latency, non-blocking asynchronous event bus (`std::sync::mpsc`), and real-time responsive terminal rendering.
 - **Safety First:** Minimize `unsafe` blocks and document exact safety invariants.
 
 ---

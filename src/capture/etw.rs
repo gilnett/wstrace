@@ -8,8 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use chrono::Local;
-use crossbeam_channel::Sender;
+use std::sync::mpsc::Sender;
 use windows_sys::core::GUID;
 use windows_sys::Win32::Foundation::{ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, NO_ERROR};
 use windows_sys::Win32::System::Diagnostics::Etw::{
@@ -21,7 +20,7 @@ use windows_sys::Win32::System::Diagnostics::Etw::{
 };
 
 use crate::capture::elevation::detect_elevation;
-use crate::event::{EventCategory, TraceEvent};
+use crate::event::{current_timestamp, EventCategory, TraceEvent};
 
 // Known Windows Kernel ETW Provider GUIDs
 pub const KERNEL_FILE_GUID: GUID = GUID {
@@ -285,7 +284,7 @@ unsafe extern "system" fn etw_record_callback(record: *mut EVENT_RECORD) {
     let opcode = header.EventDescriptor.Opcode;
     let operation = format!("{}Op{}", operation_prefix, opcode);
     let event_id = state.event_counter.fetch_add(1, Ordering::Relaxed);
-    let now = Local::now().format("%H:%M:%S.%3f").to_string();
+    let now = current_timestamp();
 
     let event = TraceEvent {
         id: event_id,
@@ -325,7 +324,7 @@ mod tests {
     #[test]
     fn test_etw_consumer_lifecycle() {
         let consumer = EtwConsumer::new(0);
-        let (tx, _rx) = crossbeam_channel::unbounded();
+        let (tx, _rx) = std::sync::mpsc::channel();
         consumer.start(tx);
         consumer.stop();
         assert!(!consumer.running.load(Ordering::Relaxed));

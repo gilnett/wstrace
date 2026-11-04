@@ -31,7 +31,7 @@ This document details the internal architecture, design principles, and componen
                   |     (src/capture/etw.rs)       |
                   +---------------+----------------+
                                   |
-                                  v (Crossbeam Channel Bus)
+                                  v (MPSC Channel Bus)
                   +--------------------------------+
                   |          Event Model           |
                   |         (src/event.rs)         |
@@ -77,7 +77,7 @@ This document details the internal architecture, design principles, and componen
 
 1. **Zero Kernel Drivers (Ring-3 Safety)**: Completely userland-based, avoiding Blue Screen of Death (BSOD) risks or rootkit attack surfaces.
 2. **Air-Gapped & Sovereign**: Zero network calls, zero telemetry reporting. Trace data stays strictly within workstation RAM or local output files.
-3. **Decoupled Event Bus & Dual Retention**: Multi-threaded capture threads communicate with rendering and streaming engines via Crossbeam channels. Supports lossy real-time monitoring (default, dropping overruns to maintain responsiveness) and planned lossless mode (`--zero-drop`).
+3. **Decoupled Event Bus & Dual Retention**: Multi-threaded capture threads communicate with rendering and streaming engines via lock-free MPSC channels. Supports lossy real-time monitoring (default, dropping overruns to maintain responsiveness) and planned lossless mode (`--zero-drop`).
 4. **Minimal Dependencies & Lean Footprint**: Pure standard library Rust and lean raw bindings (`windows-sys`). Standalone release executable targeted under 5 MB, with strict RAM caps (~15 MB for 50,000 buffered events).
 
 ---

@@ -1,8 +1,8 @@
 use super::*;
 use crate::cli::{Commands, OutputMode};
 use crate::event::EventCategory;
-use crossbeam_channel::unbounded;
 use std::path::PathBuf;
+use std::sync::mpsc::channel;
 
 struct TempFileGuard(PathBuf);
 impl Drop for TempFileGuard {
@@ -33,7 +33,7 @@ fn test_stream_when_valid_events_then_writes_valid_ndjson_records() {
     let _guard = TempFileGuard(temp_path.clone());
     let temp_file_str = temp_path.to_string_lossy().to_string();
 
-    let (tx, rx) = unbounded::<TraceEvent>();
+    let (tx, rx) = channel::<TraceEvent>();
 
     let args = Cli {
         command: Commands::All,
@@ -109,7 +109,7 @@ fn test_stream_when_filtered_by_failures_only_then_writes_only_failure_ndjson_re
     let _guard = TempFileGuard(temp_path.clone());
     let temp_file_str = temp_path.to_string_lossy().to_string();
 
-    let (tx, rx) = unbounded::<TraceEvent>();
+    let (tx, rx) = channel::<TraceEvent>();
 
     let args = Cli {
         command: Commands::All,
@@ -178,7 +178,7 @@ fn test_stream_when_include_exclude_active_then_filters_ndjson_file_output() {
     let _guard = TempFileGuard(temp_path.clone());
     let temp_file_str = temp_path.to_string_lossy().to_string();
 
-    let (tx, rx) = unbounded::<TraceEvent>();
+    let (tx, rx) = channel::<TraceEvent>();
 
     let args = Cli {
         command: Commands::All,
@@ -259,7 +259,7 @@ fn test_stream_when_no_events_received_then_produces_empty_ndjson_file() {
     let _guard = TempFileGuard(temp_path.clone());
     let temp_file_str = temp_path.to_string_lossy().to_string();
 
-    let (_tx, rx) = unbounded::<TraceEvent>();
+    let (_tx, rx) = channel::<TraceEvent>();
 
     let args = Cli {
         command: Commands::All,
@@ -290,7 +290,7 @@ fn test_stream_when_no_events_received_then_produces_empty_ndjson_file() {
 fn test_stream_when_output_file_unwritable_then_continues_without_panic() {
     // Arrange
     let unwritable_path = "Z:\\nonexistent_invalid_dir_99999\\output.ndjson".to_string();
-    let (tx, rx) = unbounded::<TraceEvent>();
+    let (tx, rx) = channel::<TraceEvent>();
 
     let args = Cli {
         command: Commands::All,
@@ -330,7 +330,7 @@ fn test_stream_when_output_file_unwritable_then_continues_without_panic() {
 #[test]
 fn test_stream_bounded_buffer_retention() {
     // Arrange
-    let (tx, rx) = unbounded::<TraceEvent>();
+    let (tx, rx) = channel::<TraceEvent>();
 
     let args = Cli {
         command: Commands::All,

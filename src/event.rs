@@ -1,6 +1,19 @@
 // wstrace - Event Data Structures
 
 use serde::{Deserialize, Serialize};
+use windows_sys::Win32::Foundation::SYSTEMTIME;
+use windows_sys::Win32::System::SystemInformation::GetLocalTime;
+
+pub fn current_timestamp() -> String {
+    unsafe {
+        let mut st = std::mem::zeroed::<SYSTEMTIME>();
+        GetLocalTime(&mut st);
+        format!(
+            "{:02}:{:02}:{:02}.{:03}",
+            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds
+        )
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventCategory {
@@ -52,7 +65,7 @@ impl TraceEvent {
         result: impl Into<String>,
         is_failure: bool,
     ) -> Self {
-        let now = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
+        let now = current_timestamp();
         Self {
             id,
             timestamp: now,

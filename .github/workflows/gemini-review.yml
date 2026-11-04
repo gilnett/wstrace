@@ -136,49 +136,75 @@ jobs:
               }
             }
 
+            // Attempt to load AGENTS.md dynamically from the repository
+            let agentsContent = "";
+            try {
+              const { data: fileData } = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: "AGENTS.md",
+                ref: `refs/pull/${context.issue.number}/head`
+              });
+              if (fileData && fileData.content) {
+                agentsContent = Buffer.from(fileData.content, 'base64').toString('utf8');
+              }
+            } catch (_) {
+              try {
+                const { data: fileData } = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: "AGENTS.md"
+                });
+                if (fileData && fileData.content) {
+                  agentsContent = Buffer.from(fileData.content, 'base64').toString('utf8');
+                }
+              } catch (_) {}
+            }
+
             const promptParts = [
               "You are a Principal Systems Engineer and Rust Security Auditor conducting an in-depth code review for 'wstrace' (a zero-driver Windows system and Win32 API trace monitor written in 100% native Rust).",
               "",
-              "Evaluate this Pull Request diff thoroughly against core systems engineering standards and the repository's AGENTS.md guidelines:",
-              "1. Safety & Zero Production Panics: Reject raw .unwrap() in production execution paths. Require explicit error propagation (Result, ?) or documented .expect(\"invariant: ...\"). Ensure raw .unwrap() is used exclusively in tests (#[cfg(test)] or tests/).",
-              "2. Win32 & Kernel ETW Invariants: Check deterministic closure of all Win32 handles (HANDLE, HMODULE, trace handles). Guard against handle leaks, verify NTSTATUS vs Win32 error code separation and severity bits, and check TOCTOU/buffer alignment.",
-              "3. Module & Import Hygiene: Reject glob imports (use ...::*) in non-test modules. Explicit symbol imports are mandatory.",
-              "4. Concurrency & Performance: Minimize shared ownership (avoid unnecessary Arc/Rc on hot capture paths; prioritize borrowing and std::sync::mpsc channels). Preserve zero-allocation string formatting on event loops.",
-              "5. CLI & Documentation Parity: Ensure any modified CLI flag or option strictly matches src/cli.rs and has corresponding unit tests in tests/cli_tests.rs.",
+              "Audit this Pull Request diff thoroughly against systems programming rigor, Win32 API correctness, and the project's AGENTS.md engineering standards.",
+              "Key standards to enforce:",
+              "- Zero Production Panics: Reject raw .unwrap() in production execution paths. Require Result/? or documented .expect(\"invariant: ...\"). Raw .unwrap() is allowed exclusively in tests.",
+              "- Safe FFI & Invariants: All unsafe blocks MUST have an explicit `// SAFETY:` rationale comment detailing why memory safety is sound. Prefer MaybeUninit over zeroed memory for C out-parameters.",
+              "- Win32 Handle & Resource Safety: Ensure deterministic closure of all Win32 handles (HANDLE, HMODULE, trace handles). Check for leaks, buffer overruns, and NTSTATUS vs Win32 error code separation.",
+              "- Module & Import Hygiene: Reject glob imports (use ...::*) in non-test modules. Explicit symbol imports are mandatory.",
+              "- Concurrency & Allocation: Minimize shared ownership (Arc/Rc) on capture paths. Use std::sync::mpsc channels.",
+              "- CLI & Test Parity: Modified CLI flags must have matching unit tests in src/cli/tests.rs and integration tests.",
               "",
-              "Format your review in GitHub Markdown with the following clear sections:",
-              "### 1. Executive Summary",
-              "High-level overview of changes, architecture impact, and design decisions.",
+              "REVIEW GUIDELINES:",
+              "- Do NOT output a checklist of passed rules. Only report actual violations or areas needing improvement.",
+              "- Every finding MUST be self-contained: include the exact file and line range (`path/to/file.rs:L-L`), the technical problem, and the actionable replacement code snippet (`suggestion` or `diff`) directly under the finding.",
               "",
-              "### 2. Policy & Standards Verification",
-              "- Zero Production unwrap(): [PASS / VIOLATION with exact file and line]",
-              "- Explicit Imports (No Globs): [PASS / VIOLATION with exact file and line]",
-              "- Win32 Handle & Resource Safety: [PASS / VIOLATION]",
-              "- Channel & Concurrency Invariants: [PASS / VIOLATION]",
-              "- CLI & Test Parity: [PASS / VIOLATION]",
+              "Format your review in GitHub Markdown with these exact sections:",
+              "### 1. Summary",
+              "2-3 concise sentences summarizing the intent, scope, and architectural impact of this PR.",
               "",
-              "### 3. Detailed Findings by Severity",
-              "- Critical: Memory/handle leaks, thread panics, security flaws, concurrency data races, or data corruption.",
-              "- Warning: Suboptimal Win32 API patterns, unhandled error cases, or hot-path allocation bottlenecks.",
-              "- Nitpick / Idiomatic: Code style, Rust idiom enhancements, micro-optimizations, or documentation clarity.",
-              "(If a severity category has no issues, explicitly state 'None identified'.)",
+              "### 2. Review Comments",
+              "Categorize findings strictly using the Conventional Comments industry standard:",
+              "- **Blocking Issues (Required Changes)**: Functional bugs, safety flaws, handle/memory leaks, unhandled errors, undocumented unsafe blocks, or AGENTS.md policy violations that must be fixed prior to merging.",
+              "- **Non-blocking Suggestions (Optional Refactoring)**: Micro-optimizations, idiomatic Rust refinements, or documentation polish that do not block merging.",
+              "*(If no issues are found in a category, do not create empty bullet points for it. If the PR is completely clean, simply write 'No blocking issues or suggestions identified.')*",
               "",
-              "### 4. Actionable Code Suggestions",
-              "For each warning or critical finding, provide exact GitHub suggestion diff blocks (```suggestion ... ```) so fixes can be applied directly via the GitHub UI.",
-              "",
-              "### 5. Verdict",
-              "State clearly: **LGTM / Approved** or **Changes Requested** with concise technical justification.",
-              "",
-              "GIT DIFF:",
-              "```diff",
-              truncatedDiff,
-              "```"
+              "### 3. Verdict",
+              "- If ANY blocking issues exist: State `**Changes Requested**` followed by a concise bulleted list of mandatory fixes.",
+              "- If zero blocking issues exist (clean or non-blocking suggestions only): State `**Ready for Maintainer Review**`.",
+              "- NEVER issue conditional approvals (e.g., do NOT write 'LGTM / Approved (conditional)').",
+              ""
             ];
+
+            if (agentsContent) {
+              promptParts.push("REPOSITORY AGENTS.MD GUIDELINES:\n```markdown\n" + agentsContent + "\n```\n");
+            }
+
+            promptParts.push("GIT DIFF TO REVIEW:\n```diff\n" + truncatedDiff + "\n```");
             const prompt = promptParts.join("\n");
 
             // 3. Call Gemini API with retries (Generous Free Tier: gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash)
             const models = [
               'gemini-2.5-flash',
+              'gemini-3.5-flash',
               'gemini-2.0-flash',
               'gemini-1.5-flash',
               'gemini-2.5-flash-lite',

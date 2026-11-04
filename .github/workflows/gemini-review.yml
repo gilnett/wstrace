@@ -48,28 +48,52 @@ jobs:
               } catch (_) {}
             }
 
-            // 1. Check review quota (max 3 reviews per PR)
+            // 1. Check review quota (max 3 reviews per 24-hour rolling window)
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
 
-            const previousReviews = comments.filter(c =>
-              c.body && c.body.includes('Gemini AI Code Review')
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            const reviewsLast24h = comments.filter(c =>
+              c.body &&
+              c.body.includes('Gemini AI Code Review') &&
+              new Date(c.created_at) > oneDayAgo
             );
 
-            const maxReviews = 3;
-            const reviewIndex = previousReviews.length + 1;
+            const maxReviewsPerDay = 3;
+            const totalPreviousReviews = comments.filter(c =>
+              c.body && c.body.includes('Gemini AI Code Review')
+            ).length;
+            const reviewIndex = totalPreviousReviews + 1;
 
-            if (reviewIndex > maxReviews) {
-              console.log(`Review quota reached (${previousReviews.length}/${maxReviews}). Skipping review.`);
+            const isMaintainer = context.payload.comment && (
+              context.payload.comment.author_association === 'OWNER' ||
+              context.payload.comment.author_association === 'COLLABORATOR' ||
+              context.payload.comment.user?.login === context.repo.owner
+            );
+
+            const userRequestedForce = context.eventName === 'issue_comment' &&
+              context.payload.comment &&
+              context.payload.comment.body.includes('force');
+
+            const isForce = userRequestedForce && isMaintainer;
+
+            if (reviewsLast24h.length >= maxReviewsPerDay && !isForce) {
+              console.log(`Daily review quota reached (${reviewsLast24h.length}/${maxReviewsPerDay} in last 24h). Skipping review.`);
               if (context.eventName === 'issue_comment') {
+                const unauthorizedNotice = userRequestedForce && !isMaintainer
+                  ? `\n\n> [!WARNING]\n> \`@gemini review force\` is restricted to repository maintainers.`
+                  : ``;
+                const maintainerHint = isMaintainer
+                  ? ` (maintainer override: comment \`@gemini review force\` to bypass).`
+                  : `.`;
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: context.issue.number,
-                  body: `> [!NOTE]\n> **Gemini AI Review Quota Reached**: This Pull Request has already received its maximum of ${maxReviews} automated AI reviews (#${maxReviews}/${maxReviews}). Further automated reviews are disabled for this PR to conserve API resources.`
+                  body: `> [!NOTE]\n> **Gemini AI Review Daily Quota Reached**: This Pull Request has received ${reviewsLast24h.length}/${maxReviewsPerDay} reviews in the past 24 hours. The quota resets automatically on a 24-hour rolling window${maintainerHint}${unauthorizedNotice}`
                 });
               }
               return;
@@ -113,16 +137,37 @@ jobs:
             }
 
             const promptParts = [
-              "You are an expert Rust systems programmer reviewing a Pull Request for 'wstrace' (a Windows system, Win32 API, and Process Monitor CLI written in native Rust).",
-              "Review the following git diff carefully. Focus strictly on critical bugs, memory safety, concurrency, Win32 API edge cases, and performance regressions.",
+              "You are a Principal Systems Engineer and Rust Security Auditor conducting an in-depth code review for 'wstrace' (a zero-driver Windows system and Win32 API trace monitor written in 100% native Rust).",
               "",
-              "Structure your response with:",
-              "1. **Summary of Changes**: Concise summary of architectural and functional changes.",
-              "2. **Code Quality & Rust Idioms**: Evaluation against modern Rust idioms, safety, error handling, and performance.",
-              "3. **Potential Issues / Edge Cases**: Actionable feedback on bugs, leaks, or Win32 gotchas (or state 'None identified').",
-              "4. **Verdict**: Clear recommendation (LGTM / Needs Attention).",
+              "Evaluate this Pull Request diff thoroughly against core systems engineering standards and the repository's AGENTS.md guidelines:",
+              "1. Safety & Zero Production Panics: Reject raw .unwrap() in production execution paths. Require explicit error propagation (Result, ?) or documented .expect(\"invariant: ...\"). Ensure raw .unwrap() is used exclusively in tests (#[cfg(test)] or tests/).",
+              "2. Win32 & Kernel ETW Invariants: Check deterministic closure of all Win32 handles (HANDLE, HMODULE, trace handles). Guard against handle leaks, verify NTSTATUS vs Win32 error code separation and severity bits, and check TOCTOU/buffer alignment.",
+              "3. Module & Import Hygiene: Reject glob imports (use ...::*) in non-test modules. Explicit symbol imports are mandatory.",
+              "4. Concurrency & Performance: Minimize shared ownership (avoid unnecessary Arc/Rc on hot capture paths; prioritize borrowing and std::sync::mpsc channels). Preserve zero-allocation string formatting on event loops.",
+              "5. CLI & Documentation Parity: Ensure any modified CLI flag or option strictly matches src/cli.rs and has corresponding unit tests in tests/cli_tests.rs.",
               "",
-              "Keep your response concise, actionable, and formatted in GitHub Markdown.",
+              "Format your review in GitHub Markdown with the following clear sections:",
+              "### 1. Executive Summary",
+              "High-level overview of changes, architecture impact, and design decisions.",
+              "",
+              "### 2. Policy & Standards Verification",
+              "- Zero Production unwrap(): [PASS / VIOLATION with exact file and line]",
+              "- Explicit Imports (No Globs): [PASS / VIOLATION with exact file and line]",
+              "- Win32 Handle & Resource Safety: [PASS / VIOLATION]",
+              "- Channel & Concurrency Invariants: [PASS / VIOLATION]",
+              "- CLI & Test Parity: [PASS / VIOLATION]",
+              "",
+              "### 3. Detailed Findings by Severity",
+              "- Critical: Memory/handle leaks, thread panics, security flaws, concurrency data races, or data corruption.",
+              "- Warning: Suboptimal Win32 API patterns, unhandled error cases, or hot-path allocation bottlenecks.",
+              "- Nitpick / Idiomatic: Code style, Rust idiom enhancements, micro-optimizations, or documentation clarity.",
+              "(If a severity category has no issues, explicitly state 'None identified'.)",
+              "",
+              "### 4. Actionable Code Suggestions",
+              "For each warning or critical finding, provide exact GitHub suggestion diff blocks (```suggestion ... ```) so fixes can be applied directly via the GitHub UI.",
+              "",
+              "### 5. Verdict",
+              "State clearly: **LGTM / Approved** or **Changes Requested** with concise technical justification.",
               "",
               "GIT DIFF:",
               "```diff",
@@ -131,14 +176,14 @@ jobs:
             ];
             const prompt = promptParts.join("\n");
 
-            // 3. Call Gemini API with retries across active Gemini 3 generation models
+            // 3. Call Gemini API with retries (Generous Free Tier: gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash)
             const models = [
+              'gemini-2.5-flash',
+              'gemini-2.0-flash',
+              'gemini-1.5-flash',
+              'gemini-2.5-flash-lite',
               'gemini-3.8-flash',
-              'gemini-3.7-flash',
-              'gemini-3.6-flash',
-              'gemini-3.5-flash',
-              'gemini-3.5-flash-lite',
-              'gemini-3.1-flash-lite'
+              'gemini-3.5-flash'
             ];
             let reviewText = null;
             let usedModel = null;
@@ -198,14 +243,9 @@ jobs:
               return;
             }
 
-            const header = `### 🤖 Gemini AI Code Review (#${reviewIndex}/${maxReviews} - ${usedModel})\n\n`;
+            const header = `### 🤖 Gemini AI Code Review (#${reviewIndex} - ${usedModel})\n\n`;
 
-            let followUpTip = "";
-            if (reviewIndex < maxReviews) {
-              followUpTip = `\n\n> 💡 *Need another review after pushing updates? Comment \`@gemini review\` to trigger review #${reviewIndex + 1}/${maxReviews}.*`;
-            } else {
-              followUpTip = `\n\n> ℹ️ *This is the final automated AI review for this Pull Request (#${maxReviews}/${maxReviews}).*`;
-            }
+            const followUpTip = `\n\n> 💡 *Need another review? Comment \`@gemini review\` (max 3 reviews per 24h rolling window).*`;
 
             const footer = `\n\n---\n*Generated automatically by Google Gemini (${usedModel}) via GitHub Actions.*` + followUpTip;
             const finalBody = header + reviewText + footer;
@@ -218,4 +258,4 @@ jobs:
               body: finalBody
             });
 
-            console.log(`Successfully posted Gemini review #${reviewIndex}/${maxReviews} to PR #${context.issue.number}`);
+            console.log(`Successfully posted Gemini review #${reviewIndex} to PR #${context.issue.number}`);

@@ -1,6 +1,63 @@
-/target
-/dist
-*.tmp
+# Rust build artifacts
+/target/
+Cargo.lock.bak
+
+# Release distribution & packages
+/dist/
 *.zip
+*.tar
+*.tar.gz
+*.7z
+*.msi
+
+# Windows binaries & compiler artifacts
+*.exe
+*.dll
+*.pdb
+*.lib
+*.exp
+*.ilk
+
+# Tracing, benchmark, and runtime outputs (ETW & wstrace logs)
+*.etl
+*.wst
+*.ndjson
+*.log
+trace_session.json
+system_trace.json
+test_output.json
+report.json
+summary.json
+
+# Temporary and editor files
+*.tmp
+*.temp
+*.bak
+*~
+*.swp
+*.swo
+
+# IDE & development tools
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# OS-generated files
 Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
 .DS_Store
+._*
+
+# Environment and credentials
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt

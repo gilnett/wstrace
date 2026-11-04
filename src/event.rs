@@ -5,9 +5,12 @@ use windows_sys::Win32::Foundation::SYSTEMTIME;
 use windows_sys::Win32::System::SystemInformation::GetLocalTime;
 
 pub fn current_timestamp() -> String {
+    // SAFETY: GetLocalTime accepts a valid pointer to stack-allocated SYSTEMTIME
+    // storage and populates time fields without heap allocations or side effects.
     unsafe {
-        let mut st = std::mem::zeroed::<SYSTEMTIME>();
-        GetLocalTime(&mut st);
+        let mut st = std::mem::MaybeUninit::<SYSTEMTIME>::uninit();
+        GetLocalTime(st.as_mut_ptr());
+        let st = st.assume_init();
         format!(
             "{:02}:{:02}:{:02}.{:03}",
             st.wHour, st.wMinute, st.wSecond, st.wMilliseconds

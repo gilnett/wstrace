@@ -41,3 +41,9 @@ divan = "0.1"
 [[bench]]
 name = "perf_bench"
 harness = false
+
+[profile.dev]
+incremental = false
+
+[profile.test]
+incremental = false

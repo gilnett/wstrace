@@ -207,13 +207,29 @@ jobs:
                   if (response.ok) {
                     const data = await response.json();
                     const candidate = data.candidates?.[0];
-                    reviewText = candidate?.content?.parts?.[0]?.text;
+                    const parts = candidate?.content?.parts || [];
+
+                    // Filter out internal reasoning / thinking parts emitted by Gemini models
+                    const contentParts = parts.filter(p => !p.thought && !p.thought_process);
+
+                    if (contentParts.length > 0) {
+                      reviewText = contentParts.map(p => p.text).filter(Boolean).join('\n').trim();
+                    } else if (parts.length > 0) {
+                      // Fallback if all parts had thought flag: take the last part
+                      reviewText = parts[parts.length - 1]?.text?.trim();
+                    }
+
+                    // Strip any stray thinking/thought XML blocks if emitted as raw text
+                    if (reviewText) {
+                      reviewText = reviewText.replace(/<thought>[\s\S]*?<\/thought>/gi, '').trim();
+                    }
+
                     if (reviewText) {
                       usedModel = model;
                       break;
                     } else {
                       const finishReason = candidate?.finishReason || "UNKNOWN";
-                      console.log(`${model} returned HTTP 200 but no text parts. Finish reason: ${finishReason}`);
+                      console.log(`${model} returned HTTP 200 but no valid content parts. Finish reason: ${finishReason}`);
                       break;
                     }
                   } else if (response.status === 503 || response.status === 429) {

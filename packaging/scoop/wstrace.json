@@ -1,28 +1,28 @@
 {
-    "version": "0.2.2",
-    "description": "High-performance zero-driver Windows system and API monitor in Rust",
-    "homepage": "https://github.com/gilnett/wstrace",
-    "license": "GPL-3.0-or-later",
-    "architecture": {
-        "64bit": {
-            "url": "https://github.com/gilnett/wstrace/releases/download/v0.2.2/wstrace-v0.2.2-windows-x86_64.zip",
-            "hash": "3e935269c7ef1c900711a1b8c2bfd178fbfe4ec5bc61eec63307852d7597c25d"
-        },
-        "arm64": {
-            "url": "https://github.com/gilnett/wstrace/releases/download/v0.2.2/wstrace-v0.2.2-windows-aarch64.zip",
-            "hash": "1f94f9cbc798adb72e1de6e15613be47323fad5e0f55402b1e6481bf432531eb"
-        }
+  "version": "0.3.0",
+  "description": "High-performance zero-driver Windows system and API monitor in Rust",
+  "homepage": "https://github.com/gilnett/wstrace",
+  "license": "GPL-3.0-or-later",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/gilnett/wstrace/releases/download/v0.3.0/wstrace-v0.3.0-windows-x86_64.zip",
+      "hash": "b509f452626a58e71402eb84f31ee0b52223a15e7c9fbec58f6823ef1e1d1f20"
     },
-    "bin": "wstrace.exe",
-    "checkver": "github",
-    "autoupdate": {
-        "architecture": {
-            "64bit": {
-                "url": "https://github.com/gilnett/wstrace/releases/download/v$version/wstrace-v$version-windows-x86_64.zip"
-            },
-            "arm64": {
-                "url": "https://github.com/gilnett/wstrace/releases/download/v$version/wstrace-v$version-windows-aarch64.zip"
-            }
-        }
+    "arm64": {
+      "url": "https://github.com/gilnett/wstrace/releases/download/v0.3.0/wstrace-v0.3.0-windows-aarch64.zip",
+      "hash": "5f80a4d5cb6b7de72499c131169144e033747e1fc2177204455784b8827987a9"
     }
+  },
+  "bin": "wstrace.exe",
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/gilnett/wstrace/releases/download/v$version/wstrace-v$version-windows-x86_64.zip"
+      },
+      "arm64": {
+        "url": "https://github.com/gilnett/wstrace/releases/download/v$version/wstrace-v$version-windows-aarch64.zip"
+      }
+    }
+  }
 }

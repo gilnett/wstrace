@@ -3,10 +3,9 @@
 #![deny(unused)]
 
 use std::process;
+use std::sync::mpsc::channel;
 
-use anyhow::{Context, Result};
 use clap::Parser;
-use crossbeam_channel::unbounded;
 
 use wstrace::capture::{spawn_target_process, EtwConsumer, NetworkProbe, Win32Probe};
 use wstrace::cli::{Cli, Commands, OutputMode};
@@ -14,7 +13,7 @@ use wstrace::event::TraceEvent;
 use wstrace::output;
 use wstrace::tui::{self, app::App};
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
 
     // Resolve target PID and process name
@@ -27,8 +26,7 @@ fn main() -> Result<()> {
                 println!("[INFO] Launching target binary: '{}'", command);
             }
             let suppress_output = args.mode == OutputMode::Tui;
-            let launched = spawn_target_process(command, cmd_args, suppress_output)
-                .with_context(|| format!("Failed to spawn process '{}'", command))?;
+            let launched = spawn_target_process(command, cmd_args, suppress_output)?;
             (launched.pid, command.clone())
         }
         Commands::Attach { pid, name } => {
@@ -36,7 +34,7 @@ fn main() -> Result<()> {
                 (*p, format!("PID:{}", p))
             } else if let Some(n) = name {
                 let found_pid = find_pid_by_name(n)
-                    .with_context(|| format!("No active process named '{}' found.", n))?;
+                    .ok_or_else(|| format!("No active process named '{}' found.", n))?;
                 (found_pid, n.clone())
             } else {
                 eprintln!("[ERROR] Specify either --pid or --name for the attach command.");
@@ -60,7 +58,7 @@ fn main() -> Result<()> {
     }
 
     // High-performance unbounded event bus
-    let (event_tx, event_rx) = unbounded::<TraceEvent>();
+    let (event_tx, event_rx) = channel::<TraceEvent>();
 
     // Initialize Win32 and ETW monitoring probes (track children by default for 'run')
     let track_children = args.track_children || matches!(args.command, Commands::Run { .. });

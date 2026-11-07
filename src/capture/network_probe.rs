@@ -8,8 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use chrono::Local;
-use crossbeam_channel::Sender;
+use std::sync::mpsc::Sender;
 use windows_sys::Win32::Foundation::{ERROR_INSUFFICIENT_BUFFER, NO_ERROR};
 use windows_sys::Win32::NetworkManagement::IpHelper::{
     GetExtendedTcpTable, GetExtendedUdpTable, MIB_TCP6ROW_OWNER_PID, MIB_TCP6TABLE_OWNER_PID,
@@ -18,7 +17,7 @@ use windows_sys::Win32::NetworkManagement::IpHelper::{
 };
 use windows_sys::Win32::Networking::WinSock::{AF_INET, AF_INET6};
 
-use crate::event::{EventCategory, TraceEvent};
+use crate::event::{current_timestamp, EventCategory, TraceEvent};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SocketRecord {
@@ -64,7 +63,7 @@ impl NetworkProbe {
                 for sock in &current_sockets {
                     if !known_sockets.contains(sock) {
                         event_id_counter += 1;
-                        let now = Local::now().format("%H:%M:%S.%3f").to_string();
+                        let now = current_timestamp();
 
                         let target_display = if sock.remote_port > 0 {
                             format!(
@@ -400,7 +399,7 @@ mod tests {
     #[test]
     fn test_network_probe_lifecycle() {
         let probe = NetworkProbe::new(0, "SYSTEM-WIDE".to_string());
-        let (tx, _rx) = crossbeam_channel::unbounded();
+        let (tx, _rx) = std::sync::mpsc::channel();
         probe.start(tx);
         probe.stop();
         assert!(!probe.running.load(Ordering::Relaxed));

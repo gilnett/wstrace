@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use std::io::Result;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::process::{Child, Command};
@@ -26,9 +26,7 @@ pub fn spawn_target_process(
         cmd.creation_flags(0x00000010); // CREATE_NEW_CONSOLE
     }
 
-    let child = cmd
-        .spawn()
-        .with_context(|| format!("Failed to spawn program '{}'", program))?;
+    let child = cmd.spawn()?;
 
     let pid = child.id();
     Ok(LaunchedProcess { pid, child })

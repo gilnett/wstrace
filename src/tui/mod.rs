@@ -7,7 +7,6 @@ pub mod ui;
 use std::io::{stdout, Result};
 use std::time::Duration;
 
-use crossbeam_channel::Receiver;
 use crossterm::{
     event::{self, Event as CEvent, KeyCode, KeyEventKind, KeyModifiers},
     execute,
@@ -15,6 +14,7 @@ use crossterm::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use std::sync::mpsc::Receiver;
 
 use crate::event::TraceEvent;
 use app::App;

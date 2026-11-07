@@ -11,7 +11,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL-3.0" /></a>
   <a href="https://github.com/sponsors/gilnett"><img src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?logo=githubsponsors&logoColor=white" alt="GitHub Sponsors" /></a>
-  <a href="https://ko-fi.com/gilnet"><img src="https://img.shields.io/badge/Ko--fi-Support%20Project-FF5E5B?logo=kofi&logoColor=white" alt="Ko-fi" /></a>
+  <a href="https://buymeacoffee.com/gilnett"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee" /></a>
 </p>
 
 <p align="center">
@@ -114,7 +114,7 @@ flowchart LR
         ETW["Native ETW<br/>(I/O, Registry)"]
     end
 
-    W32 & NET & ETW -->|TraceEvent| BUS["Lock-Free Bus<br/><code>crossbeam</code>"]
+    W32 & NET & ETW -->|TraceEvent| BUS["Lock-Free Bus<br/><code>mpsc</code>"]
 
     BUS --> TUI["TUI View<br/>(ratatui)"]
     BUS --> STREAM["Stream View<br/>(stdout)"]
@@ -243,13 +243,13 @@ For complete license notices and terms, see [THIRD_PARTY_LICENSES.md](THIRD_PART
 
 ## Support & Sponsorship
 
-If you find `wstrace` useful for your Windows engineering, security audits, or performance debugging, you can support development via GitHub Sponsors or Ko-fi:
+If you find `wstrace` useful for your Windows engineering, security audits, or performance debugging, you can support development via GitHub Sponsors or Buy Me a Coffee:
 
 [![Sponsor on GitHub](https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/gilnett)
-[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20the%20Author-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white)](https://ko-fi.com/gilnet)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Donate-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/gilnett)
 
 - **GitHub Sponsors:** [https://github.com/sponsors/gilnett](https://github.com/sponsors/gilnett)
-- **Ko-fi:** [https://ko-fi.com/gilnet](https://ko-fi.com/gilnet)
+- **Buy Me a Coffee:** [https://buymeacoffee.com/gilnett](https://buymeacoffee.com/gilnett)
 
 
 

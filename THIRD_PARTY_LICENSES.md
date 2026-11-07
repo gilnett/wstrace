@@ -15,11 +15,8 @@ All third-party libraries utilized by `wstrace` are distributed under permissive
 | **`crossterm`** | Cross-platform terminal manipulation & input handling | MIT | Timon Post & Contributors |
 | **`windows-sys`** | Windows API & Kernel ETW raw bindings | MIT OR Apache-2.0 | Microsoft Corporation |
 | **`clap`** | Command-line argument parsing | MIT OR Apache-2.0 | Clap Developers |
-| **`crossbeam-channel`** | High-performance lock-free event queue channels | MIT OR Apache-2.0 | Crossbeam Developers |
 | **`serde`** | Serialization & deserialization framework | MIT OR Apache-2.0 | Erick Tryzelaar & David Tolnay |
 | **`serde_json`** | JSON export formatter | MIT OR Apache-2.0 | Erick Tryzelaar & David Tolnay |
-| **`chrono`** | High-precision microsecond timestamp management | MIT OR Apache-2.0 | Chrono Developers |
-| **`anyhow`** | Idiomatic error handling & diagnostic context | MIT OR Apache-2.0 | David Tolnay |
 
 ---
 

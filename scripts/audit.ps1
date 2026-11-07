@@ -16,6 +16,10 @@
     11. Packaging manifests validation (Scoop JSON & Winget YAML)
     12. Git commit title length hygiene (<= 72 chars)
     13. PowerShell scripts static analysis (PSScriptAnalyzer)
+    14. Unused dependencies detection (cargo-machete)
+    15. License compliance & lockfile hygiene (cargo-deny)
+    16. Binary footprint & bloat profiler (cargo-bloat)
+    17. Semantic Versioning public API integrity (cargo-semver-checks)
 #>
 
 [CmdletBinding()]
@@ -23,6 +27,8 @@ param(
     [switch]$SkipTests = $false,
     [switch]$SkipBench = $false,
     [switch]$RunLeakBench = $false,
+    [switch]$RunMiri = $false,
+    [switch]$RunCoverage = $false,
     [switch]$FailFast = $false
 )
 
@@ -63,7 +69,7 @@ Write-AuditHeader "Starting wstrace Quality & Security Audit"
 # ----------------------------------------------------
 # 1. Anti-Binary & Git Hygiene Check
 # ----------------------------------------------------
-Write-Host "`n--> [1/13] Inspecting Git tree for binary leaks..." -ForegroundColor White
+Write-Host "`n--> [1/17] Inspecting Git tree for binary leaks..." -ForegroundColor White
 $trackedBinaries = git ls-files | Where-Object { $_ -match '\.(exe|zip|msi|dll|pdb|tar|gz)$' }
 if ($trackedBinaries) {
     Report-Failure "Tracked binary files detected in Git: $trackedBinaries"
@@ -74,7 +80,7 @@ if ($trackedBinaries) {
 # ----------------------------------------------------
 # 2. Code Formatting (rustfmt)
 # ----------------------------------------------------
-Write-Host "`n--> [2/13] Verifying Rust formatting (cargo fmt --check)..." -ForegroundColor White
+Write-Host "`n--> [2/17] Verifying Rust formatting (cargo fmt --check)..." -ForegroundColor White
 try {
     $fmtOut = & cargo fmt --check 2>&1
     if ($LASTEXITCODE -eq 0) {
@@ -89,7 +95,7 @@ try {
 # ----------------------------------------------------
 # 3. Static Analysis & Security Lints (clippy)
 # ----------------------------------------------------
-Write-Host "`n--> [3/13] Running Clippy linter with strict zero-warning policy..." -ForegroundColor White
+Write-Host "`n--> [3/17] Running Clippy linter with strict zero-warning policy..." -ForegroundColor White
 try {
     $clippyOut = & cargo clippy --all-targets -- -D warnings 2>&1
     if ($LASTEXITCODE -eq 0) {
@@ -105,7 +111,7 @@ try {
 # 4. Unit & Performance Tests
 # ----------------------------------------------------
 if (-not $SkipTests) {
-    Write-Host "`n--> [4/13] Executing Unit & Performance tests..." -ForegroundColor White
+    Write-Host "`n--> [4/17] Executing Unit & Performance tests..." -ForegroundColor White
     try {
         $testOut = & cargo test 2>&1
         if ($LASTEXITCODE -eq 0) {
@@ -124,7 +130,7 @@ if (-not $SkipTests) {
 # 5. Micro-Benchmark Suite Integrity (Divan)
 # ----------------------------------------------------
 if (-not $SkipBench) {
-    Write-Host "`n--> [5/13] Verifying Divan micro-benchmarks integrity (cargo bench --no-run)..." -ForegroundColor White
+    Write-Host "`n--> [5/17] Verifying Divan micro-benchmarks integrity (cargo bench --no-run)..." -ForegroundColor White
     try {
         $benchOut = & cargo bench --no-run 2>&1
         if ($LASTEXITCODE -eq 0) {
@@ -142,7 +148,7 @@ if (-not $SkipBench) {
 # ----------------------------------------------------
 # 6. Dependency Tree Validation (cargo tree)
 # ----------------------------------------------------
-Write-Host "`n--> [6/13] Validating dependency tree (cargo tree) for zero bloat..." -ForegroundColor White
+Write-Host "`n--> [6/17] Validating dependency tree (cargo tree) for zero bloat..." -ForegroundColor White
 try {
     $treeOut = & cargo tree 2>&1
     if ($LASTEXITCODE -eq 0) {
@@ -168,7 +174,7 @@ try {
 # ----------------------------------------------------
 # 7. Dependency Security Audit (cargo-audit)
 # ----------------------------------------------------
-Write-Host "`n--> [7/13] Checking for dependency vulnerabilities (RustSec)..." -ForegroundColor White
+Write-Host "`n--> [7/17] Checking for dependency vulnerabilities (RustSec)..." -ForegroundColor White
 $cargoAuditCmd = Get-Command "cargo-audit" -ErrorAction SilentlyContinue
 if ($null -eq $cargoAuditCmd) {
     Report-Warn "cargo-audit is not installed locally. (It will still run automatically in CI)."
@@ -189,7 +195,7 @@ if ($null -eq $cargoAuditCmd) {
 # ----------------------------------------------------
 # 8. CLI Documentation Synchronization Verification
 # ----------------------------------------------------
-Write-Host "`n--> [8/13] Verifying CLI documentation synchronization (src/cli.rs vs docs/CLI_REFERENCE.md)..." -ForegroundColor White
+Write-Host "`n--> [8/17] Verifying CLI documentation synchronization (src/cli.rs vs docs/CLI_REFERENCE.md)..." -ForegroundColor White
 $cliRsPath = Join-Path $Root "src\cli.rs"
 $cliRefPath = Join-Path $Root "docs\CLI_REFERENCE.md"
 if ((Test-Path $cliRsPath) -and (Test-Path $cliRefPath)) {
@@ -254,7 +260,7 @@ if ((Test-Path $cliRsPath) -and (Test-Path $cliRefPath)) {
 # ----------------------------------------------------
 # 9. Static Security & Secrets Scanner
 # ----------------------------------------------------
-Write-Host "`n--> [9/13] Scanning for hardcoded secrets and personal workstation paths..." -ForegroundColor White
+Write-Host "`n--> [9/17] Scanning for hardcoded secrets and personal workstation paths..." -ForegroundColor White
 $scanDirs = @("src", "docs", "packaging", "scripts")
 $secFailures = @()
 $personalPathRegex = [regex]'[A-Za-z]:\\Users\\[a-zA-Z0-9_\-]+'
@@ -297,7 +303,7 @@ if ($secFailures.Count -gt 0) {
 # ----------------------------------------------------
 # 10. Source Code & Comment Hygiene (Anti-Emoji & English-Only)
 # ----------------------------------------------------
-Write-Host "`n--> [10/13] Enforcing source code hygiene (Anti-Emoji & English-Only comments)..." -ForegroundColor White
+Write-Host "`n--> [10/17] Enforcing source code hygiene (Anti-Emoji & English-Only comments)..." -ForegroundColor White
 $hygieneErrors = @()
 $emojiFiles = Get-ChildItem -Path $Root -Recurse -File | Where-Object {
     ($_.FullName -notmatch '\\target\\') -and ($_.FullName -notmatch '\\\.git\\') -and
@@ -330,7 +336,7 @@ if ($hygieneErrors.Count -gt 0) {
 # ----------------------------------------------------
 # 11. Packaging Manifests & Version Sync Validation
 # ----------------------------------------------------
-Write-Host "`n--> [11/13] Validating Scoop & Winget manifests..." -ForegroundColor White
+Write-Host "`n--> [11/17] Validating Scoop & Winget manifests..." -ForegroundColor White
 
 # Extract Cargo.toml version
 $cargoContent = Get-Content (Join-Path $Root "Cargo.toml") -Raw
@@ -402,14 +408,18 @@ if (Test-Path $wingetPath) {
         Report-Failure "Winget manifest missing valid 64-char InstallerSha256."
     }
 
-    # Run winget validate if winget CLI is present
+    # Run winget validate if winget CLI is present and accessible
     $wingetCmd = Get-Command "winget" -ErrorAction SilentlyContinue
     if ($wingetCmd) {
-        $wingetVal = & winget validate --manifest $wingetPath 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Report-Success "winget validate passed with 0 errors."
-        } else {
-            Report-Failure "winget validate failed:`n$wingetVal"
+        try {
+            $wingetVal = & winget validate --manifest $wingetPath 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Report-Success "winget validate passed with 0 errors."
+            } else {
+                Report-Failure "winget validate failed:`n$wingetVal"
+            }
+        } catch {
+            Report-Warn "winget CLI execution unavailable in this environment: $($_.Exception.Message)"
         }
     }
 } else {
@@ -419,7 +429,7 @@ if (Test-Path $wingetPath) {
 # ----------------------------------------------------
 # 12. Git Commit Title Length Hygiene
 # ----------------------------------------------------
-Write-Host "`n--> [12/13] Verifying Git commit title length guidelines (<= 72 chars)..." -ForegroundColor White
+Write-Host "`n--> [12/17] Verifying Git commit title length guidelines (<= 72 chars)..." -ForegroundColor White
 try {
     $headTitle = (git log -1 --pretty=format:"%s" 2>&1)
     if ($headTitle) {
@@ -443,7 +453,7 @@ try {
 # ----------------------------------------------------
 # 13. PowerShell Scripts Static Analysis (PSScriptAnalyzer)
 # ----------------------------------------------------
-Write-Host "`n--> [13/13] Analyzing PowerShell scripts (*.ps1) with PSScriptAnalyzer..." -ForegroundColor White
+Write-Host "`n--> [13/17] Analyzing PowerShell scripts (*.ps1) with PSScriptAnalyzer..." -ForegroundColor White
 $psAnalyzerCmd = Get-Command "Invoke-ScriptAnalyzer" -ErrorAction SilentlyContinue
 if ($null -eq $psAnalyzerCmd) {
     Report-Warn "PSScriptAnalyzer is not installed locally. Run 'Install-Module -Name PSScriptAnalyzer -Scope CurrentUser'."
@@ -464,6 +474,132 @@ if ($null -eq $psAnalyzerCmd) {
         }
     } catch {
         Report-Failure "Invoke-ScriptAnalyzer execution failed: $_"
+    }
+}
+
+# ----------------------------------------------------
+# 14. Unused Dependencies Detection (cargo-machete)
+# ----------------------------------------------------
+Write-Host "`n--> [14/17] Scanning for unused dependencies (cargo-machete)..." -ForegroundColor White
+$macheteCmd = Get-Command "cargo-machete" -ErrorAction SilentlyContinue
+if ($null -eq $macheteCmd) {
+    Report-Warn "cargo-machete is not installed. Tip: Run 'cargo binstall cargo-machete -y' to enable unused dependency pruning."
+} else {
+    try {
+        $macheteOut = & cargo-machete $Root 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Report-Success "Zero unused dependencies detected in Cargo.toml."
+        } else {
+            Report-Failure "Unused dependencies detected:`n$macheteOut"
+        }
+    } catch {
+        Report-Failure "cargo-machete execution failed: $_"
+    }
+}
+
+# ----------------------------------------------------
+# 15. License Compliance & Lockfile Hygiene (cargo-deny)
+# ----------------------------------------------------
+Write-Host "`n--> [15/17] Validating licenses, bans & duplicate crates (cargo-deny)..." -ForegroundColor White
+$denyCmd = Get-Command "cargo-deny" -ErrorAction SilentlyContinue
+if ($null -eq $denyCmd) {
+    Report-Warn "cargo-deny is not installed. Tip: Run 'cargo binstall cargo-deny -y' to enable license & duplicate crate checks."
+} else {
+    try {
+        $denyConfig = Join-Path $Root "deny.toml"
+        $denyArgs = if (Test-Path $denyConfig) { @("deny", "check") } else { @("deny", "check", "bans", "sources") }
+        $denyOut = & cargo $denyArgs 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Report-Success "cargo-deny validation passed: 0 license violations or banned crates."
+        } else {
+            Report-Failure "cargo-deny detected issues:`n$denyOut"
+        }
+    } catch {
+        Report-Failure "cargo-deny execution failed: $_"
+    }
+}
+
+# ----------------------------------------------------
+# 16. Binary Footprint & Bloat Profiling (cargo-bloat)
+# ----------------------------------------------------
+Write-Host "`n--> [16/17] Analyzing binary footprint & crate bloat (cargo-bloat)..." -ForegroundColor White
+$bloatCmd = Get-Command "cargo-bloat" -ErrorAction SilentlyContinue
+if ($null -eq $bloatCmd) {
+    Report-Warn "cargo-bloat is not installed. Tip: Run 'cargo binstall cargo-bloat -y' to profile binary size allocations."
+} else {
+    try {
+        $bloatOut = & cargo bloat --release --crates -n 5 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Report-Success "Binary bloat profile generated successfully (top 5 crates analyzed)."
+        } else {
+            Report-Warn "cargo-bloat could not profile release binary (run 'cargo build --release' first)."
+        }
+    } catch {
+        Report-Warn "cargo-bloat execution failed: $_"
+    }
+}
+
+# ----------------------------------------------------
+# 17. Semantic Versioning & Public API Integrity (cargo-semver-checks)
+# ----------------------------------------------------
+Write-Host "`n--> [17/17] Validating SemVer public API compatibility (cargo-semver-checks)..." -ForegroundColor White
+$semverCmd = Get-Command "cargo-semver-checks" -ErrorAction SilentlyContinue
+if ($null -eq $semverCmd) {
+    Report-Warn "cargo-semver-checks is not installed. Tip: Run 'cargo binstall cargo-semver-checks -y' to enforce API breaking change detection."
+} else {
+    try {
+        $semverOut = & cargo semver-checks check-release 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Report-Success "SemVer public API validation passed: 0 breaking API changes."
+        } else {
+            Report-Failure "cargo-semver-checks reported breaking API changes:`n$semverOut"
+        }
+    } catch {
+        Report-Failure "cargo-semver-checks execution failed: $_"
+    }
+}
+
+# ----------------------------------------------------
+# Undefined Behavior Detection via Miri (Optional Hook)
+# ----------------------------------------------------
+if ($RunMiri) {
+    Write-Host "`n--> Executing Miri Undefined Behavior verification (cargo +nightly miri test)..." -ForegroundColor White
+    $miriCmd = Get-Command "cargo-miri" -ErrorAction SilentlyContinue
+    if ($null -eq $miriCmd) {
+        Report-Warn "Miri is not installed on this toolchain. Run 'rustup component add miri --toolchain nightly'."
+    } else {
+        try {
+            $miriOut = & cargo +nightly miri test --lib 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Report-Success "Miri verification passed: 0 undefined behaviors detected in unsafe blocks."
+            } else {
+                Report-Failure "Miri detected undefined behavior:`n$miriOut"
+            }
+        } catch {
+            Report-Failure "cargo miri execution failed: $_"
+        }
+    }
+}
+
+# ----------------------------------------------------
+# LLVM Source Code Coverage (Optional Hook)
+# ----------------------------------------------------
+if ($RunCoverage) {
+    Write-Host "`n--> Measuring LLVM source code coverage (cargo-llvm-cov)..." -ForegroundColor White
+    $covCmd = Get-Command "cargo-llvm-cov" -ErrorAction SilentlyContinue
+    if ($null -eq $covCmd) {
+        Report-Warn "cargo-llvm-cov is not installed. Run 'cargo binstall cargo-llvm-cov -y'."
+    } else {
+        try {
+            $covOut = & cargo llvm-cov --no-report 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Report-Success "LLVM source code coverage analysis completed."
+            } else {
+                Report-Failure "cargo-llvm-cov execution failed:`n$covOut"
+            }
+        } catch {
+            Report-Failure "cargo-llvm-cov execution failed: $_"
+        }
     }
 }
 
